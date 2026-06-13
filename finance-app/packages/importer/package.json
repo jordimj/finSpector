@@ -1,0 +1,15 @@
+{
+  "name": "@finance/importer",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "import:sample": "tsx src/import-excel.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@finance/db": "workspace:*",
+    "@finance/shared": "workspace:*",
+    "drizzle-orm": "^0.38.4"
+  }
+}

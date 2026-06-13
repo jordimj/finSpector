@@ -1,0 +1,17 @@
+{
+  "name": "@finance/analytics",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "monthly": "tsx src/monthly-cashflow.ts",
+    "yearly": "tsx src/yearly-summary.ts",
+    "categories": "tsx src/category-breakdown.ts",
+    "merchants": "tsx src/top-merchants.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@finance/db": "workspace:*",
+    "@finance/shared": "workspace:*"
+  }
+}

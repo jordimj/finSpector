@@ -1,0 +1,29 @@
+{
+  "name": "finance-app",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@9.15.4",
+  "scripts": {
+    "db:up": "docker compose up -d",
+    "db:down": "docker compose down",
+    "db:migrate": "corepack pnpm --filter @finance/db migrate",
+    "import:sample": "corepack pnpm --filter @finance/importer import:sample",
+    "analyze:monthly": "corepack pnpm --filter @finance/analytics monthly",
+    "analyze:yearly": "corepack pnpm --filter @finance/analytics yearly",
+    "analyze:categories": "corepack pnpm --filter @finance/analytics categories",
+    "analyze:merchants": "corepack pnpm --filter @finance/analytics merchants",
+    "typecheck": "corepack pnpm -r typecheck"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.7",
+    "@types/pg": "^8.11.10",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.7",
+    "drizzle-orm": "^0.38.4",
+    "pg": "^8.13.1"
+  }
+}

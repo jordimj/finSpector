@@ -1,0 +1,21 @@
+{
+  "name": "@finance/db",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./client": "./src/client.ts",
+    "./schema": "./src/schema.ts"
+  },
+  "scripts": {
+    "migrate": "tsx src/migrate.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@finance/shared": "workspace:*",
+    "dotenv": "^16.4.7",
+    "drizzle-orm": "^0.38.4",
+    "pg": "^8.13.1"
+  }
+}
