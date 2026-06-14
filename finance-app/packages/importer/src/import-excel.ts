@@ -10,7 +10,13 @@ import {
   income,
   subcategories,
 } from '@finance/db';
-import type { ImportSummary, NormalizedTransaction } from '@finance/shared';
+import {
+  DEFAULT_EXPENSE_ACCOUNT,
+  EXPENSE_ACCOUNTS,
+  type ExpenseAccount,
+  type ImportSummary,
+  type NormalizedTransaction,
+} from '@finance/shared';
 import { normalizeTransaction } from './normalize-expense.js';
 import { parseSampleCsv } from './parse-excel.js';
 import { validateTransaction } from './validate-expense.js';
@@ -25,7 +31,8 @@ const defaultSamplePath = path.join(
 );
 
 async function main(): Promise<void> {
-  const csvPath = process.argv[2] ?? defaultSamplePath;
+  const options = parseImportArgs(process.argv.slice(2));
+  const csvPath = options.csvPath;
   const rawRows = await parseSampleCsv(csvPath);
 
   const importRows = await db
@@ -61,7 +68,11 @@ async function main(): Promise<void> {
         continue;
       }
 
-      const wasInserted = await insertIfNew(transaction, importRecord.id);
+      const wasInserted = await insertIfNew(
+        transaction,
+        importRecord.id,
+        options.account,
+      );
       if (!wasInserted) {
         summary.duplicateRows += 1;
         continue;
@@ -96,12 +107,14 @@ async function main(): Promise<void> {
 async function insertIfNew(
   transaction: NormalizedTransaction,
   importId: string,
+  account: ExpenseAccount,
 ): Promise<boolean> {
   if (transaction.type === 'expense') {
     const duplicate = await db.query.expenses.findFirst({
       where: and(
         eq(expenses.date, transaction.date),
         eq(expenses.amount, transaction.amount),
+        eq(expenses.account, account),
       ),
     });
 
@@ -119,6 +132,7 @@ async function insertIfNew(
       amount: transaction.amount,
       merchantName: transaction.merchantName,
       originalDescription: transaction.originalDescription,
+      account,
       categoryId,
       subcategoryId,
       notes: transaction.notes,
@@ -152,6 +166,55 @@ async function insertIfNew(
   });
 
   return true;
+}
+
+function parseImportArgs(args: string[]): {
+  csvPath: string;
+  account: ExpenseAccount;
+} {
+  let csvPath = defaultSamplePath;
+  let account: ExpenseAccount = DEFAULT_EXPENSE_ACCOUNT;
+
+  for (let index = 0; index < args.length; index += 1) {
+    const arg = args[index];
+    if (!arg) {
+      continue;
+    }
+
+    if (arg === '--account') {
+      const value = args[index + 1];
+      if (!value) {
+        throw new Error('Missing value for --account');
+      }
+
+      account = parseExpenseAccount(value);
+      index += 1;
+      continue;
+    }
+
+    if (arg.startsWith('--account=')) {
+      account = parseExpenseAccount(arg.slice('--account='.length));
+      continue;
+    }
+
+    if (arg.startsWith('--')) {
+      throw new Error(`Unknown option: ${arg}`);
+    }
+
+    csvPath = arg;
+  }
+
+  return { csvPath, account };
+}
+
+function parseExpenseAccount(value: string): ExpenseAccount {
+  if (EXPENSE_ACCOUNTS.includes(value as ExpenseAccount)) {
+    return value as ExpenseAccount;
+  }
+
+  throw new Error(
+    `Invalid account "${value}". Expected one of: ${EXPENSE_ACCOUNTS.join(', ')}`,
+  );
 }
 
 async function getOrCreateCategory(name: string): Promise<number> {

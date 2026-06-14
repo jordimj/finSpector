@@ -7,6 +7,13 @@ exception
   when duplicate_object then null;
 end $$;
 
+do $$
+begin
+  create type expense_account as enum ('mine', 'shared', 'kids', 'splitwise');
+exception
+  when duplicate_object then null;
+end $$;
+
 create table categories (
   id integer primary key generated always as identity,
   name text not null,
@@ -49,6 +56,7 @@ create table expenses (
   category_id integer not null references categories(id),
   subcategory_id integer,
   notes text,
+  account expense_account not null default 'mine',
   source_import_id uuid references imports(id),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
@@ -57,7 +65,7 @@ create table expenses (
     references subcategories(id, category_id)
 );
 
-create index expenses_duplicate_lookup_idx on expenses (date, amount);
+create index expenses_duplicate_lookup_idx on expenses (date, amount, account);
 create index expenses_category_id_idx on expenses (category_id);
 create index expenses_subcategory_id_idx on expenses (subcategory_id);
 create index expenses_merchant_name_idx on expenses (merchant_name);

@@ -1,6 +1,7 @@
-import { TRANSACTION_TYPES } from "./constants.js";
+import { EXPENSE_ACCOUNTS, TRANSACTION_TYPES } from './constants.js';
 
 export type TransactionType = (typeof TRANSACTION_TYPES)[number];
+export type ExpenseAccount = (typeof EXPENSE_ACCOUNTS)[number];
 
 export type RawTransactionRow = {
   date: string;

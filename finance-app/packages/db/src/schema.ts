@@ -14,6 +14,7 @@ import {
 } from "drizzle-orm/pg-core";
 
 export const importStatus = pgEnum("import_status", ["started", "completed", "failed"]);
+export const expenseAccount = pgEnum("expense_account", ["mine", "shared", "kids", "splitwise"]);
 
 export const categories = pgTable(
   "categories",
@@ -75,12 +76,17 @@ export const expenses = pgTable(
     categoryId: integer("category_id").notNull().references(() => categories.id),
     subcategoryId: integer("subcategory_id"),
     notes: text("notes"),
+    account: expenseAccount("account").notNull().default("mine"),
     sourceImportId: uuid("source_import_id").references(() => imports.id),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
   },
   (table) => ({
-    duplicateLookupIdx: index("expenses_duplicate_lookup_idx").on(table.date, table.amount),
+    duplicateLookupIdx: index("expenses_duplicate_lookup_idx").on(
+      table.date,
+      table.amount,
+      table.account
+    ),
     categoryIdx: index("expenses_category_id_idx").on(table.categoryId),
     subcategoryIdx: index("expenses_subcategory_id_idx").on(table.subcategoryId),
     merchantIdx: index("expenses_merchant_name_idx").on(table.merchantName),

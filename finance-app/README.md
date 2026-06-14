@@ -42,6 +42,7 @@ postgres://finance:finance@localhost:5432/finance_app
 
 ```bash
 pnpm import:sample
+pnpm import:sample -- packages/importer/src/data/transactions.csv --account shared
 ```
 
 The sample importer reads:
@@ -58,6 +59,7 @@ It currently demonstrates the future Excel import pipeline with a simple CSV sou
 - normalize merchant or payer names
 - map category and subcategory names
 - detect duplicates by same date, same amount, and same transaction type
+- tag expense rows with an account (`mine`, `shared`, `kids`, or `splitwise`; defaults to `mine`)
 - insert into PostgreSQL
 - print an import summary
 
@@ -88,6 +90,7 @@ Expenses support:
 - `amount`
 - `merchant_name`
 - `original_description`
+- `account`
 - `category_id`
 - `subcategory_id`
 - `notes`
