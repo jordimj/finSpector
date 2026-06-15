@@ -1,0 +1,19 @@
+{
+  "name": "@finance/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "start": "tsx src/server.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@fastify/cors": "^10.0.2",
+    "@fastify/helmet": "^12.0.1",
+    "@fastify/sensible": "^6.0.2",
+    "@finance/db": "workspace:*",
+    "@finance/shared": "workspace:*",
+    "fastify": "^5.2.1"
+  }
+}
