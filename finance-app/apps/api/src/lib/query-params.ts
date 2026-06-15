@@ -1,7 +1,4 @@
-import {
-  EXPENSE_ACCOUNTS,
-  type ExpenseAccount,
-} from '@finance/shared';
+import { EXPENSE_ACCOUNTS, type ExpenseAccount } from '@finance/shared';
 
 export type TransactionTypeFilter = 'all' | 'expense' | 'income';
 
@@ -17,6 +14,7 @@ export type TransactionQuery = {
 
 export type ReportQuery = {
   account?: ExpenseAccount;
+  categoryId?: number;
   from?: string;
   to?: string;
   limit?: number;
@@ -40,24 +38,32 @@ export function transactionQuerySchema(): object {
   };
 }
 
-export function reportQuerySchema(includeLimit = false): object {
+export function reportQuerySchema(
+  options: {
+    includeCategoryId?: boolean;
+    includeLimit?: boolean;
+  } = {},
+): object {
   return {
     type: 'object',
     additionalProperties: false,
     properties: {
       account: { type: 'string', enum: EXPENSE_ACCOUNTS },
+      ...(options.includeCategoryId
+        ? { categoryId: { type: 'integer', minimum: 1 } }
+        : {}),
       from: { type: 'string', pattern: isoDatePattern.source },
       to: { type: 'string', pattern: isoDatePattern.source },
-      ...(includeLimit
+      ...(options.includeLimit
         ? { limit: { type: 'integer', minimum: 1, maximum: 100, default: 10 } }
         : {}),
     },
   };
 }
 
-export function toTransactionQuery(query: TransactionQuery): Required<
-  Pick<TransactionQuery, 'type' | 'limit' | 'offset'>
-> &
+export function toTransactionQuery(
+  query: TransactionQuery,
+): Required<Pick<TransactionQuery, 'type' | 'limit' | 'offset'>> &
   Omit<TransactionQuery, 'type' | 'limit' | 'offset'> {
   return {
     ...query,
