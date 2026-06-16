@@ -1,5 +1,3 @@
-import type { ReactNode } from 'react';
-
 export type DateRange = {
   startDate: string;
   endDate: string;
@@ -14,6 +12,27 @@ export type LastMonthExpensePoint = {
 export type LastMonthExpenses = DateRange & {
   total: number;
   dailyExpenses: LastMonthExpensePoint[];
+};
+
+export type CategorySpendResponseCategory = {
+  id: number | null;
+  category: string;
+  transactionCount: number;
+  total: string;
+};
+
+export type CategorySpendResponse = {
+  categories: CategorySpendResponseCategory[];
+};
+
+export type CategorySpendCategory = CategorySpendResponseCategory & {
+  share: number;
+  totalAmount: number;
+};
+
+export type CategorySpend = DateRange & {
+  categories: CategorySpendCategory[];
+  total: number;
 };
 
 export type ExpenseTransaction = {
@@ -47,43 +66,4 @@ export type RecentTransactionsResponse = {
   transactions: RecentTransaction[];
   limit: number;
   offset: number;
-};
-
-export type SummaryTileProps = {
-  label: string;
-  value: string;
-  icon: ReactNode;
-};
-
-export type LastMonthExpensesCardProps = {
-  data?: LastMonthExpenses;
-  isError: boolean;
-  isLoading: boolean;
-};
-
-export type LastMonthExpenseChartProps = {
-  data: LastMonthExpensePoint[];
-  isError: boolean;
-  isLoading: boolean;
-};
-
-export type RecentTransactionsCardProps = {
-  isError: boolean;
-  isLoading: boolean;
-  transactions: RecentTransaction[];
-};
-
-export type RecentTransactionsListProps = RecentTransactionsCardProps;
-
-export type TransactionRowProps = {
-  transaction: RecentTransaction;
-};
-
-export type ChildrenProps = {
-  children: ReactNode;
-};
-
-export type ElementSize = {
-  width: number;
-  height: number;
 };
