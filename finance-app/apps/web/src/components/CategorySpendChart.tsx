@@ -1,22 +1,10 @@
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
 import { useHasElementSize } from '../hooks/useHasElementSize';
 import type { CategorySpendCategory } from '../types';
-import { formatCurrency } from '../utils';
+import { formatCompactCurrency } from '../utils';
+import { getCategoryColor } from './categoryVisuals';
 import { CategorySpendChartState } from './CategorySpendChartState';
 import { CategorySpendTooltip } from './CategorySpendTooltip';
-
-const categoryColors = [
-  '#67e8f9',
-  '#86efac',
-  '#fbbf24',
-  '#fb7185',
-  '#a78bfa',
-  '#60a5fa',
-];
-
-function getCategoryColor(index: number): string {
-  return categoryColors[index % categoryColors.length] ?? '#67e8f9';
-}
 
 type CategorySpendChartProps = {
   categories: CategorySpendCategory[];
@@ -37,9 +25,9 @@ export function CategorySpendChart({
 
   if (isLoading) {
     return (
-      <div className='flex aspect-square min-h-[280px] flex-1 items-center justify-center rounded-md border border-line bg-canvas'>
+      <div className='flex aspect-square min-h-[300px] flex-1 items-center justify-center rounded-md border border-line/70 bg-canvas/70'>
         <div
-          className='size-48 animate-pulse rounded-full border-[34px] border-muted/15 border-r-muted/30 border-t-muted/25'
+          className='size-52 animate-pulse rounded-full border-[36px] border-accent-lavender/20 border-b-accent-green/40 border-r-accent-lavender/35'
           aria-hidden='true'
         />
       </div>
@@ -73,7 +61,7 @@ export function CategorySpendChart({
   return (
     <div
       ref={chartContainerRef}
-      className='relative aspect-square min-h-[280px] flex-1 rounded-md border border-line bg-canvas p-3'
+      className='relative aspect-square min-h-[300px] flex-1 rounded-md border border-line/70 bg-canvas/70 p-3'
     >
       {hasChartSize && chartSize !== null ? (
         <ResponsiveContainer
@@ -90,11 +78,11 @@ export function CategorySpendChart({
               nameKey='category'
               cx='50%'
               cy='50%'
-              innerRadius='58%'
-              outerRadius='82%'
-              paddingAngle={2}
-              stroke='#090b0e'
-              strokeWidth={3}
+              innerRadius='60%'
+              outerRadius='83%'
+              paddingAngle={1}
+              stroke='#080d1b'
+              strokeWidth={2}
             >
               {categories.map((category, index) => (
                 <Cell
@@ -110,9 +98,11 @@ export function CategorySpendChart({
 
       <div className='pointer-events-none absolute inset-0 flex items-center justify-center px-10 text-center'>
         <div>
-          <p className='text-xs font-medium text-muted'>Total</p>
-          <p className='mt-1 text-xl font-semibold tabular-nums text-ink'>
-            {formatCurrency(total)}
+          <p className='text-4xl font-bold tracking-normal tabular-nums text-ink md:text-5xl'>
+            {formatCompactCurrency(total)}
+          </p>
+          <p className='mt-2 text-xs font-semibold uppercase tracking-[0.2em] text-muted-strong'>
+            Spent
           </p>
         </div>
       </div>

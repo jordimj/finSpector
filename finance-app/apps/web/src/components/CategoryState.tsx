@@ -6,7 +6,7 @@ type CategoryStateProps = {
 
 export function CategoryState({ children }: CategoryStateProps) {
   return (
-    <div className='flex min-h-[240px] items-center justify-center px-5 py-8 text-center'>
+    <div className='flex min-h-[240px] items-center justify-center bg-canvas/25 px-5 py-8 text-center'>
       <div>{children}</div>
     </div>
   );

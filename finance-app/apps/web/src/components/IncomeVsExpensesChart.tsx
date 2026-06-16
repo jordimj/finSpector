@@ -32,7 +32,7 @@ export function IncomeVsExpensesChart({
 
   if (isLoading) {
     return (
-      <div className='flex min-h-[280px] flex-1 items-end gap-3 rounded-md border border-line bg-canvas p-4'>
+      <div className='flex min-h-[330px] flex-1 items-end gap-4 rounded-md border border-line/70 bg-canvas/70 p-5'>
         {Array.from({ length: 8 }, (_, index) => (
           <div
             key={index}
@@ -44,7 +44,7 @@ export function IncomeVsExpensesChart({
               style={{ height: `${30 + ((index * 19) % 50)}%` }}
             />
             <div
-              className='w-full max-w-5 animate-pulse rounded-t-md bg-accent-rose/20'
+              className='w-full max-w-6 animate-pulse rounded-t-md bg-accent-lavender/20'
               style={{ height: `${24 + ((index * 23) % 56)}%` }}
             />
           </div>
@@ -80,7 +80,7 @@ export function IncomeVsExpensesChart({
   return (
     <div
       ref={chartContainerRef}
-      className='min-h-[280px] flex-1 rounded-md border border-line bg-canvas p-3'
+      className='min-h-[330px] flex-1 rounded-md border border-line/70 bg-canvas/70 p-3'
     >
       {hasChartSize && chartSize !== null ? (
         <ResponsiveContainer
@@ -92,12 +92,13 @@ export function IncomeVsExpensesChart({
         >
           <BarChart
             data={data}
-            barCategoryGap='26%'
-            margin={{ top: 8, right: 24, bottom: 0, left: 6 }}
+            barCategoryGap='30%'
+            barGap={8}
+            margin={{ top: 18, right: 18, bottom: 2, left: 0 }}
           >
             <CartesianGrid
-              stroke='#28303a'
-              strokeDasharray='3 3'
+              stroke='#27334d'
+              strokeDasharray='4 6'
               vertical={false}
             />
             <XAxis
@@ -105,34 +106,34 @@ export function IncomeVsExpensesChart({
               interval='preserveStartEnd'
               minTickGap={18}
               padding={{ left: 8, right: 8 }}
-              tick={{ fill: '#9aa5b4', fontSize: 11 }}
+              tick={{ fill: '#c9d1ea', fontSize: 12, fontWeight: 600 }}
               tickLine={false}
-              axisLine={{ stroke: '#28303a' }}
+              axisLine={false}
             />
             <YAxis
-              width={58}
-              tick={{ fill: '#9aa5b4', fontSize: 11 }}
+              width={54}
+              tick={{ fill: '#98a2b8', fontSize: 11 }}
               tickFormatter={(value) => formatCompactCurrency(Number(value))}
               tickLine={false}
               axisLine={false}
             />
             <Tooltip
-              cursor={{ fill: 'rgb(244 247 251 / 0.05)' }}
+              cursor={{ fill: 'rgb(184 190 253 / 0.08)' }}
               content={<IncomeVsExpensesTooltip />}
             />
             <Bar
               dataKey='incomeAmount'
               name='Income'
-              fill='#86efac'
-              maxBarSize={20}
-              radius={[5, 5, 0, 0]}
+              fill='#4ade80'
+              maxBarSize={24}
+              radius={[4, 4, 0, 0]}
             />
             <Bar
               dataKey='expensesAmount'
               name='Expenses'
-              fill='#fb7185'
-              maxBarSize={20}
-              radius={[5, 5, 0, 0]}
+              fill='#b8befd'
+              maxBarSize={24}
+              radius={[4, 4, 0, 0]}
             />
           </BarChart>
         </ResponsiveContainer>

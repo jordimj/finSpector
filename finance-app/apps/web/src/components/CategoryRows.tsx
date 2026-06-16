@@ -1,19 +1,7 @@
 import type { CategorySpendCategory } from '../types';
+import { getCategoryColor } from './categoryVisuals';
 import { CategoryRow } from './CategoryRow';
 import { CategoryState } from './CategoryState';
-
-const categoryColors = [
-  '#67e8f9',
-  '#86efac',
-  '#fbbf24',
-  '#fb7185',
-  '#a78bfa',
-  '#60a5fa',
-];
-
-function getCategoryColor(index: number): string {
-  return categoryColors[index % categoryColors.length] ?? '#67e8f9';
-}
 
 type CategoryRowsProps = {
   categories: CategorySpendCategory[];
@@ -34,14 +22,20 @@ export function CategoryRows({
         {Array.from({ length: 6 }, (_, index) => (
           <div
             key={index}
-            className='grid grid-cols-[minmax(0,1fr)_104px_60px] items-center gap-3 px-5 py-4'
+            className='grid gap-4 px-5 py-5 md:grid-cols-[minmax(0,1.15fr)_minmax(7rem,0.55fr)_minmax(12rem,0.95fr)] md:items-center'
           >
-            <div className='min-w-0 space-y-2'>
-              <div className='h-3 w-2/3 animate-pulse rounded-full bg-muted/25' />
-              <div className='h-1.5 animate-pulse rounded-full bg-muted/15' />
+            <div className='flex min-w-0 items-center gap-3'>
+              <div className='size-11 animate-pulse rounded-md bg-muted/15' />
+              <div className='min-w-0 flex-1 space-y-2'>
+                <div className='h-3 w-2/3 animate-pulse rounded-full bg-muted/25' />
+                <div className='h-2 w-1/2 animate-pulse rounded-full bg-muted/15' />
+              </div>
             </div>
-            <div className='h-3 animate-pulse rounded-full bg-muted/20' />
-            <div className='h-3 animate-pulse rounded-full bg-muted/15' />
+            <div className='h-4 animate-pulse rounded-full bg-muted/20' />
+            <div className='space-y-2'>
+              <div className='h-3 w-1/2 animate-pulse rounded-full bg-muted/20' />
+              <div className='h-2 animate-pulse rounded-full bg-muted/15' />
+            </div>
           </div>
         ))}
       </div>

@@ -19,8 +19,8 @@ export function IncomeVsExpensesTooltip({
   }
 
   return (
-    <div className='rounded-md border border-line bg-panel px-3 py-2 shadow-shell'>
-      <p className='text-xs font-medium text-muted'>{period.label}</p>
+    <div className='rounded-md border border-line bg-panel-raised px-3 py-2 shadow-shell'>
+      <p className='text-xs font-semibold text-muted-strong'>{period.label}</p>
       <div className='mt-2 grid gap-1 text-xs'>
         <div className='flex items-center justify-between gap-6'>
           <span className='text-accent-green'>Income</span>
@@ -29,7 +29,7 @@ export function IncomeVsExpensesTooltip({
           </span>
         </div>
         <div className='flex items-center justify-between gap-6'>
-          <span className='text-accent-rose'>Expenses</span>
+          <span className='text-accent-lavender'>Expenses</span>
           <span className='font-semibold tabular-nums text-ink'>
             {formatCurrency(period.expensesAmount)}
           </span>

@@ -146,21 +146,26 @@ export function AnalyticsPage() {
   }
 
   return (
-    <section className='mx-auto max-w-7xl'>
-      <div className='mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between'>
+    <section className='mx-auto max-w-7xl pb-8'>
+      <div className='mb-7 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between'>
         <div>
-          <p className='mb-1 text-xs font-semibold uppercase tracking-[0.18em] text-accent-cyan'>
-            Analytics
-          </p>
-          <h1 className='text-2xl font-semibold tracking-normal text-ink md:text-3xl'>
-            Cashflow and spend
+          <h1 className='text-3xl font-semibold tracking-normal text-ink md:text-4xl'>
+            Spending insights
           </h1>
+          <div className='mt-3 flex flex-wrap items-center gap-3'>
+            <span className='inline-flex h-6 items-center rounded-full bg-accent-green/15 px-3 text-xs font-bold uppercase tracking-[0.14em] text-accent-green'>
+              Live update
+            </span>
+            <span className='text-sm font-medium text-muted-strong'>
+              Period: {periodLabel}
+            </span>
+          </div>
         </div>
 
         <div ref={datePickerRef} className='relative self-start sm:self-auto'>
           <button
             type='button'
-            className='inline-flex h-9 max-w-full items-center gap-2 rounded-md border border-line bg-panel px-3 text-sm font-medium text-muted-strong transition hover:bg-panel-raised hover:text-ink'
+            className='inline-flex h-10 max-w-full items-center gap-2 rounded-md border border-line bg-panel-raised px-3 text-sm font-semibold text-muted-strong shadow-shell transition hover:border-accent-lavender/60 hover:text-ink'
             aria-controls='analytics-date-range-picker'
             aria-expanded={isDatePickerOpen}
             aria-haspopup='dialog'
@@ -182,11 +187,11 @@ export function AnalyticsPage() {
               id='analytics-date-range-picker'
               role='dialog'
               aria-label='Date range'
-              className='absolute left-0 top-11 z-20 w-[calc(100vw-2rem)] max-w-[38rem] rounded-lg border border-line bg-panel p-3 shadow-shell sm:left-auto sm:right-0 sm:w-[38rem]'
+              className='absolute left-0 top-12 z-20 w-[calc(100vw-2rem)] max-w-[38rem] rounded-lg border border-line bg-panel p-3 shadow-shell sm:left-auto sm:right-0 sm:w-[38rem]'
             >
               <div className='grid gap-3 md:grid-cols-[11rem_minmax(0,1fr)]'>
                 <div className='border-b border-line pb-3 md:border-b-0 md:border-r md:pb-0 md:pr-3'>
-                  <p className='mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-muted'>
+                  <p className='mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-muted-strong'>
                     Presets
                   </p>
                   <div className='grid grid-cols-2 gap-1 md:grid-cols-1'>
@@ -199,7 +204,8 @@ export function AnalyticsPage() {
                           type='button'
                           className={cn(
                             'flex h-9 items-center justify-between gap-2 rounded-md px-3 text-left text-sm font-medium text-muted-strong transition hover:bg-panel-raised hover:text-ink',
-                            isSelected && 'bg-panel-raised text-ink',
+                            isSelected &&
+                              'bg-accent-lavender/12 text-accent-lavender',
                           )}
                           aria-pressed={isSelected}
                           onClick={() => handlePresetClick(preset.key)}
@@ -219,7 +225,7 @@ export function AnalyticsPage() {
                 </div>
 
                 <div className='min-w-0'>
-                  <p className='mb-3 text-xs font-semibold uppercase tracking-[0.14em] text-muted'>
+                  <p className='mb-3 text-xs font-semibold uppercase tracking-[0.14em] text-muted-strong'>
                     Custom dates
                   </p>
                   <div className='grid gap-3 sm:grid-cols-2'>
@@ -229,7 +235,7 @@ export function AnalyticsPage() {
                         type='date'
                         value={dateRange.startDate ?? ''}
                         max={dateRange.endDate}
-                        className='h-10 min-w-0 rounded-md border border-line bg-canvas px-3 text-sm font-medium text-ink outline-none transition [color-scheme:dark] focus:border-accent-cyan'
+                        className='h-10 min-w-0 rounded-md border border-line bg-canvas px-3 text-sm font-medium text-ink outline-none transition [color-scheme:dark] focus:border-accent-lavender'
                         onChange={(event) =>
                           handleStartDateChange(event.currentTarget.value)
                         }
@@ -242,7 +248,7 @@ export function AnalyticsPage() {
                         type='date'
                         value={dateRange.endDate ?? ''}
                         min={dateRange.startDate}
-                        className='h-10 min-w-0 rounded-md border border-line bg-canvas px-3 text-sm font-medium text-ink outline-none transition [color-scheme:dark] focus:border-accent-cyan'
+                        className='h-10 min-w-0 rounded-md border border-line bg-canvas px-3 text-sm font-medium text-ink outline-none transition [color-scheme:dark] focus:border-accent-lavender'
                         onChange={(event) =>
                           handleEndDateChange(event.currentTarget.value)
                         }
@@ -259,7 +265,7 @@ export function AnalyticsPage() {
         </div>
       </div>
 
-      <div className='grid gap-4 xl:grid-cols-2'>
+      <div className='grid gap-5 xl:grid-cols-[minmax(320px,0.82fr)_minmax(0,1.18fr)]'>
         <ExpenseBreakdownCard
           categories={categories}
           isError={categorySpend.isError}
@@ -276,11 +282,12 @@ export function AnalyticsPage() {
         />
       </div>
 
-      <div className='mt-4'>
+      <div className='mt-5'>
         <CategoriesCard
           categories={categories}
           isError={categorySpend.isError}
           isLoading={categorySpend.isLoading}
+          periodLabel={periodLabel}
           total={total}
         />
       </div>

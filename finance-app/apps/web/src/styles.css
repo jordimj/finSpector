@@ -1,26 +1,27 @@
 @import "tailwindcss";
 
 @theme {
-  --color-canvas: #090b0e;
-  --color-panel: #11151a;
-  --color-panel-raised: #171c22;
-  --color-line: #28303a;
-  --color-ink: #f4f7fb;
-  --color-muted: #9aa5b4;
-  --color-muted-strong: #c3cad5;
+  --color-canvas: #080d1b;
+  --color-panel: #11182a;
+  --color-panel-raised: #182138;
+  --color-line: #27334d;
+  --color-ink: #f3f5ff;
+  --color-muted: #98a2b8;
+  --color-muted-strong: #c9d1ea;
   --color-accent-cyan: #67e8f9;
-  --color-accent-green: #86efac;
+  --color-accent-green: #4ade80;
   --color-accent-amber: #fbbf24;
+  --color-accent-lavender: #b8befd;
   --color-accent-rose: #fb7185;
-  --shadow-shell: 0 24px 80px rgb(0 0 0 / 0.28);
+  --shadow-shell: 0 24px 80px rgb(0 0 0 / 0.34);
   --font-sans: Inter, ui-sans-serif, system-ui, BlinkMacSystemFont, "Segoe UI",
     sans-serif;
 }
 
 :root {
   color-scheme: dark;
-  background: #090b0e;
-  color: #f4f7fb;
+  background: #080d1b;
+  color: #f3f5ff;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -35,7 +36,7 @@ body {
   font-family: var(--font-sans);
   min-width: 320px;
   margin: 0;
-  background: #090b0e;
+  background: #080d1b;
 }
 
 button,
