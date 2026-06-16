@@ -9,6 +9,7 @@ import type {
   LastMonthExpenses,
   RecentTransaction,
   RecentTransactionsResponse,
+  ReportDateRange,
 } from '../types';
 
 const lastMonthExpensePageSize = 500;
@@ -56,15 +57,22 @@ export async function fetchLastMonthExpenses(
 }
 
 export async function fetchCategorySpend(
-  range: DateRange,
+  range: ReportDateRange,
 ): Promise<CategorySpend> {
-  const params = new URLSearchParams({
-    from: range.startDate,
-    to: range.endDate,
-  });
+  const params = new URLSearchParams();
+
+  if (range.startDate !== undefined) {
+    params.set('from', range.startDate);
+  }
+
+  if (range.endDate !== undefined) {
+    params.set('to', range.endDate);
+  }
+
+  const queryString = params.toString();
 
   const response = await fetchJson<CategorySpendResponse>({
-    path: `/api/reports/category-spend?${params.toString()}`,
+    path: `/api/reports/category-spend${queryString ? `?${queryString}` : ''}`,
   });
   const total = response.categories.reduce(
     (sum, category) => sum + Number(category.total),
@@ -114,6 +122,38 @@ export function getCurrentMonthRange(now = new Date()): DateRange {
     startDate: formatDateKey(start),
     endDate: formatDateKey(now),
   };
+}
+
+export function getLastSixMonthsRange(now = new Date()): DateRange {
+  const start = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+
+  return {
+    startDate: formatDateKey(start),
+    endDate: formatDateKey(now),
+  };
+}
+
+export function getCurrentYearRange(now = new Date()): DateRange {
+  const start = new Date(now.getFullYear(), 0, 1);
+
+  return {
+    startDate: formatDateKey(start),
+    endDate: formatDateKey(now),
+  };
+}
+
+export function getLastYearRange(now = new Date()): DateRange {
+  const start = new Date(now.getFullYear() - 1, 0, 1);
+  const end = new Date(now.getFullYear() - 1, 11, 31);
+
+  return {
+    startDate: formatDateKey(start),
+    endDate: formatDateKey(end),
+  };
+}
+
+export function getAllTimeRange(): ReportDateRange {
+  return {};
 }
 
 export function buildDailyExpenses(
@@ -203,6 +243,26 @@ export function formatDateRange(startDate: string, endDate: string): string {
   return `${formatter.format(parseDateKey(startDate))} - ${formatter.format(
     parseDateKey(endDate),
   )}`;
+}
+
+export function formatReportDateRange(range: ReportDateRange): string {
+  if (range.startDate === undefined && range.endDate === undefined) {
+    return 'All time';
+  }
+
+  if (range.startDate !== undefined && range.endDate !== undefined) {
+    return formatDateRange(range.startDate, range.endDate);
+  }
+
+  if (range.startDate !== undefined) {
+    return `Since ${formatTransactionDate(range.startDate)}`;
+  }
+
+  if (range.endDate !== undefined) {
+    return `Through ${formatTransactionDate(range.endDate)}`;
+  }
+
+  return 'All time';
 }
 
 export function formatTransactionDate(date: string): string {

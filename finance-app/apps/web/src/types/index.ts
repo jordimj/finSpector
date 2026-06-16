@@ -3,6 +3,11 @@ export type DateRange = {
   endDate: string;
 };
 
+export type ReportDateRange = {
+  startDate?: string;
+  endDate?: string;
+};
+
 export type LastMonthExpensePoint = {
   date: string;
   label: string;
@@ -30,7 +35,7 @@ export type CategorySpendCategory = CategorySpendResponseCategory & {
   totalAmount: number;
 };
 
-export type CategorySpend = DateRange & {
+export type CategorySpend = ReportDateRange & {
   categories: CategorySpendCategory[];
   total: number;
 };
