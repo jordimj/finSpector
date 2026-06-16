@@ -7,6 +7,9 @@
   "scripts": {
     "api:dev": "corepack pnpm --filter @finance/api dev",
     "api:start": "corepack pnpm --filter @finance/api start",
+    "web:dev": "corepack pnpm --filter @finance/web dev",
+    "web:build": "corepack pnpm --filter @finance/web build",
+    "web:preview": "corepack pnpm --filter @finance/web preview",
     "db:up": "docker compose up -d",
     "db:down": "docker compose down",
     "db:migrate": "corepack pnpm --filter @finance/db migrate",
