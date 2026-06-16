@@ -1,6 +1,6 @@
 import {
-  Bar,
-  BarChart,
+  Area,
+  AreaChart,
   CartesianGrid,
   ResponsiveContainer,
   Tooltip,
@@ -30,7 +30,7 @@ export function LastMonthExpenseChart({
 
   if (isLoading) {
     return (
-      <div className='flex min-h-[280px] flex-1 items-end gap-2 rounded-md border border-line bg-canvas p-4'>
+      <div className='flex min-h-[250px] flex-1 items-end gap-2 rounded-md bg-canvas/45 p-4'>
         {Array.from({ length: 12 }, (_, index) => (
           <div
             key={index}
@@ -38,7 +38,7 @@ export function LastMonthExpenseChart({
             aria-hidden='true'
           >
             <div
-              className='w-full animate-pulse rounded-t-md bg-muted/20'
+              className='w-full animate-pulse rounded-t-md bg-accent-lavender/20'
               style={{ height: `${28 + ((index * 17) % 55)}%` }}
             />
           </div>
@@ -72,7 +72,7 @@ export function LastMonthExpenseChart({
   return (
     <div
       ref={chartContainerRef}
-      className='min-h-[280px] flex-1 rounded-md border border-line bg-canvas p-3'
+      className='min-h-[250px] flex-1 rounded-md bg-canvas/45 p-3'
     >
       {hasChartSize && chartSize !== null ? (
         <ResponsiveContainer
@@ -82,13 +82,26 @@ export function LastMonthExpenseChart({
           minHeight={0}
           initialDimension={chartSize}
         >
-          <BarChart
+          <AreaChart
             data={data}
-            margin={{ top: 8, right: 24, bottom: 0, left: 6 }}
+            margin={{ top: 14, right: 16, bottom: 2, left: 10 }}
           >
+            <defs>
+              <linearGradient
+                id='lastMonthSpendGradient'
+                x1='0'
+                x2='0'
+                y1='0'
+                y2='1'
+              >
+                <stop offset='0%' stopColor='#b8befd' stopOpacity={0.42} />
+                <stop offset='55%' stopColor='#b8befd' stopOpacity={0.16} />
+                <stop offset='100%' stopColor='#b8befd' stopOpacity={0} />
+              </linearGradient>
+            </defs>
             <CartesianGrid
-              stroke='#28303a'
-              strokeDasharray='3 3'
+              stroke='#27334d'
+              strokeDasharray='4 8'
               vertical={false}
             />
             <XAxis
@@ -96,28 +109,36 @@ export function LastMonthExpenseChart({
               interval='preserveStartEnd'
               minTickGap={18}
               padding={{ left: 8, right: 8 }}
-              tick={{ fill: '#9aa5b4', fontSize: 11 }}
+              tick={{ fill: '#98a2b8', fontSize: 11 }}
               tickLine={false}
-              axisLine={{ stroke: '#28303a' }}
+              axisLine={false}
             />
             <YAxis
-              width={58}
-              tick={{ fill: '#9aa5b4', fontSize: 11 }}
+              width={54}
+              tick={{ fill: '#98a2b8', fontSize: 11 }}
               tickFormatter={(value) => formatCompactCurrency(Number(value))}
               tickLine={false}
               axisLine={false}
             />
             <Tooltip
-              cursor={{ fill: 'rgb(103 232 249 / 0.08)' }}
+              cursor={{ stroke: '#b8befd', strokeWidth: 1 }}
               content={<LastMonthExpenseTooltip />}
             />
-            <Bar
+            <Area
+              activeDot={{
+                fill: '#b8befd',
+                r: 5,
+                stroke: '#080d1b',
+                strokeWidth: 2,
+              }}
               dataKey='amount'
-              fill='#67e8f9'
-              maxBarSize={24}
-              radius={[5, 5, 0, 0]}
+              fill='url(#lastMonthSpendGradient)'
+              fillOpacity={1}
+              stroke='#b8befd'
+              strokeWidth={3}
+              type='monotone'
             />
-          </BarChart>
+          </AreaChart>
         </ResponsiveContainer>
       ) : null}
     </div>

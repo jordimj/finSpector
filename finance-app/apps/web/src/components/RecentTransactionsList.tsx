@@ -9,16 +9,21 @@ export function RecentTransactionsList() {
   if (recentTransactions.isLoading) {
     return (
       <div className='divide-y divide-line'>
-        {Array.from({ length: 10 }, (_, index) => (
+        {Array.from({ length: 6 }, (_, index) => (
           <div
             key={index}
-            className='grid grid-cols-[36px_minmax(0,1fr)_86px] items-center gap-3 px-5 py-3'
+            className='grid gap-4 px-5 py-5 md:grid-cols-[minmax(0,1.3fr)_minmax(8rem,0.75fr)_minmax(7rem,0.65fr)_minmax(7rem,0.65fr)_minmax(7rem,0.65fr)] md:items-center'
           >
-            <div className='size-9 animate-pulse rounded-md border border-line bg-panel-raised' />
-            <div className='min-w-0 space-y-2'>
-              <div className='h-3 w-3/4 animate-pulse rounded-full bg-muted/25' />
-              <div className='h-2.5 w-1/2 animate-pulse rounded-full bg-muted/15' />
+            <div className='flex min-w-0 items-center gap-3'>
+              <div className='size-10 animate-pulse rounded-full bg-muted/15' />
+              <div className='min-w-0 flex-1 space-y-2'>
+                <div className='h-3 w-3/4 animate-pulse rounded-full bg-muted/25' />
+                <div className='h-2.5 w-1/2 animate-pulse rounded-full bg-muted/15' />
+              </div>
             </div>
+            <div className='h-3 animate-pulse rounded-full bg-muted/20' />
+            <div className='h-3 animate-pulse rounded-full bg-muted/15' />
+            <div className='h-3 animate-pulse rounded-full bg-muted/15' />
             <div className='h-3 animate-pulse rounded-full bg-muted/20' />
           </div>
         ))}
