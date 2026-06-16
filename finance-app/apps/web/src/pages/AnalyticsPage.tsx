@@ -2,7 +2,9 @@ import { CalendarDays, Check, ChevronDown } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { CategoriesCard } from '../components/CategoriesCard';
 import { ExpenseBreakdownCard } from '../components/ExpenseBreakdownCard';
+import { IncomeVsExpensesCard } from '../components/IncomeVsExpensesCard';
 import { useCategorySpend } from '../hooks/useCategorySpend';
+import { useIncomeVsExpenses } from '../hooks/useIncomeVsExpenses';
 import { cn } from '../lib/utils';
 import type { ReportDateRange } from '../types';
 import {
@@ -59,6 +61,7 @@ export function AnalyticsPage() {
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
   const datePickerRef = useRef<HTMLDivElement>(null);
   const categorySpend = useCategorySpend(dateRange);
+  const incomeVsExpenses = useIncomeVsExpenses(dateRange);
   const categories = categorySpend.data?.categories ?? [];
   const total = categorySpend.data?.total ?? 0;
   const periodLabel = formatReportDateRange(dateRange);
@@ -150,7 +153,7 @@ export function AnalyticsPage() {
             Analytics
           </p>
           <h1 className='text-2xl font-semibold tracking-normal text-ink md:text-3xl'>
-            Category spend
+            Cashflow and spend
           </h1>
         </div>
 
@@ -256,7 +259,7 @@ export function AnalyticsPage() {
         </div>
       </div>
 
-      <div className='grid gap-4 xl:grid-cols-[minmax(0,0.85fr)_minmax(360px,1fr)]'>
+      <div className='grid gap-4 xl:grid-cols-2'>
         <ExpenseBreakdownCard
           categories={categories}
           isError={categorySpend.isError}
@@ -265,6 +268,15 @@ export function AnalyticsPage() {
           total={total}
         />
 
+        <IncomeVsExpensesCard
+          data={incomeVsExpenses.data}
+          isError={incomeVsExpenses.isError}
+          isLoading={incomeVsExpenses.isLoading}
+          periodLabel={periodLabel}
+        />
+      </div>
+
+      <div className='mt-4'>
         <CategoriesCard
           categories={categories}
           isError={categorySpend.isError}

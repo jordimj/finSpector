@@ -13,6 +13,22 @@ type MonthlyCashflowRow = {
   net: string;
 };
 
+type IncomeVsExpensesGroupBy = 'month' | 'year';
+
+type IncomeVsExpensesGrouping = {
+  groupBy: IncomeVsExpensesGroupBy;
+  sqlDatePart: IncomeVsExpensesGroupBy;
+  sqlPeriodFormat: 'YYYY-MM' | 'YYYY';
+};
+
+type IncomeVsExpensesRow = {
+  period: string | null;
+  income: string;
+  expenses: string;
+  net: string;
+  is_total: number;
+};
+
 type CategorySpendRow = {
   category_id: number | null;
   category: string;
@@ -65,6 +81,77 @@ export async function registerReportRoutes(
 
       return {
         months: result.rows,
+      };
+    },
+  );
+
+  app.get<{ Querystring: ReportQuery }>(
+    '/income-vs-expenses',
+    {
+      schema: {
+        querystring: reportQuerySchema(),
+      },
+    },
+    async (request) => {
+      const query = toReportQuery(request.query);
+      const { expenseFilters, incomeFilters, values } =
+        buildReportFilters(query);
+      const grouping = getIncomeVsExpensesGrouping(query);
+
+      const result = await pool.query<IncomeVsExpensesRow>(
+        `
+          with transactions as (
+            select
+              date_trunc('${grouping.sqlDatePart}', date)::date as period_start,
+              amount,
+              'expense' as type
+            from expenses
+            ${expenseFilters}
+
+            union all
+
+            select
+              date_trunc('${grouping.sqlDatePart}', date)::date as period_start,
+              amount,
+              'income' as type
+            from income
+            ${incomeFilters}
+          )
+          select
+            case
+              when grouping(period_start) = 1 then null
+              else to_char(period_start, '${grouping.sqlPeriodFormat}')
+            end as period,
+            coalesce(sum(amount) filter (where type = 'income'), 0)::numeric(12, 2)::text as income,
+            coalesce(sum(amount) filter (where type = 'expense'), 0)::numeric(12, 2)::text as expenses,
+            (
+              coalesce(sum(amount) filter (where type = 'income'), 0) -
+              coalesce(sum(amount) filter (where type = 'expense'), 0)
+            )::numeric(12, 2)::text as net,
+            grouping(period_start)::integer as is_total
+          from transactions
+          group by rollup(period_start)
+          order by grouping(period_start), period_start;
+        `,
+        values,
+      );
+      const total = result.rows.find((row) => row.is_total === 1);
+
+      return {
+        groupBy: grouping.groupBy,
+        totals: toIncomeVsExpensesAmounts(total),
+        periods: result.rows.flatMap((row) => {
+          if (row.is_total === 1 || row.period === null) {
+            return [];
+          }
+
+          return [
+            {
+              period: row.period,
+              ...toIncomeVsExpensesAmounts(row),
+            },
+          ];
+        }),
       };
     },
   );
@@ -124,6 +211,34 @@ export async function registerReportRoutes(
       };
     },
   );
+}
+
+function getIncomeVsExpensesGrouping(
+  query: ReportQuery,
+): IncomeVsExpensesGrouping {
+  if (query.from === undefined && query.to === undefined) {
+    return {
+      groupBy: 'year',
+      sqlDatePart: 'year',
+      sqlPeriodFormat: 'YYYY',
+    };
+  }
+
+  return {
+    groupBy: 'month',
+    sqlDatePart: 'month',
+    sqlPeriodFormat: 'YYYY-MM',
+  };
+}
+
+function toIncomeVsExpensesAmounts(
+  row: Pick<IncomeVsExpensesRow, 'income' | 'expenses' | 'net'> | undefined,
+) {
+  return {
+    income: row?.income ?? '0.00',
+    expenses: row?.expenses ?? '0.00',
+    net: row?.net ?? '0.00',
+  };
 }
 
 function appendExpenseFilter(

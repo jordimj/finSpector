@@ -5,6 +5,9 @@ import type {
   DateRange,
   ExpenseTransaction,
   ExpenseTransactionsResponse,
+  IncomeVsExpenses,
+  IncomeVsExpensesGroupBy,
+  IncomeVsExpensesResponse,
   LastMonthExpensePoint,
   LastMonthExpenses,
   RecentTransaction,
@@ -59,17 +62,7 @@ export async function fetchLastMonthExpenses(
 export async function fetchCategorySpend(
   range: ReportDateRange,
 ): Promise<CategorySpend> {
-  const params = new URLSearchParams();
-
-  if (range.startDate !== undefined) {
-    params.set('from', range.startDate);
-  }
-
-  if (range.endDate !== undefined) {
-    params.set('to', range.endDate);
-  }
-
-  const queryString = params.toString();
+  const queryString = toReportQueryString(range);
 
   const response = await fetchJson<CategorySpendResponse>({
     path: `/api/reports/category-spend${queryString ? `?${queryString}` : ''}`,
@@ -91,6 +84,29 @@ export async function fetchCategorySpend(
       };
     }),
     total,
+  };
+}
+
+export async function fetchIncomeVsExpenses(
+  range: ReportDateRange,
+): Promise<IncomeVsExpenses> {
+  const queryString = toReportQueryString(range);
+
+  const response = await fetchJson<IncomeVsExpensesResponse>({
+    path: `/api/reports/income-vs-expenses${queryString ? `?${queryString}` : ''}`,
+  });
+
+  return {
+    ...range,
+    groupBy: response.groupBy,
+    totals: response.totals,
+    periods: response.periods.map((period) => ({
+      ...period,
+      label: formatIncomeVsExpensesPeriod(period.period, response.groupBy),
+      incomeAmount: Number(period.income),
+      expensesAmount: Number(period.expenses),
+      netAmount: Number(period.net),
+    })),
   };
 }
 
@@ -210,6 +226,22 @@ export function formatDayLabel(date: Date): string {
   }).format(date);
 }
 
+export function formatIncomeVsExpensesPeriod(
+  period: string,
+  groupBy: IncomeVsExpensesGroupBy,
+): string {
+  if (groupBy === 'year') {
+    return period;
+  }
+
+  const [year = 0, month = 1] = period.split('-').map(Number);
+
+  return new Intl.DateTimeFormat(undefined, {
+    month: 'short',
+    year: 'numeric',
+  }).format(new Date(year, month - 1, 1));
+}
+
 export function formatCurrency(value: number): string {
   return new Intl.NumberFormat(undefined, {
     style: 'currency',
@@ -288,4 +320,18 @@ export function formatTransactionCurrency(value: number): string {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(value);
+}
+
+function toReportQueryString(range: ReportDateRange): string {
+  const params = new URLSearchParams();
+
+  if (range.startDate !== undefined) {
+    params.set('from', range.startDate);
+  }
+
+  if (range.endDate !== undefined) {
+    params.set('to', range.endDate);
+  }
+
+  return params.toString();
 }

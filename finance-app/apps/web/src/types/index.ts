@@ -40,6 +40,37 @@ export type CategorySpend = ReportDateRange & {
   total: number;
 };
 
+export type IncomeVsExpensesGroupBy = 'month' | 'year';
+
+export type IncomeVsExpensesAmounts = {
+  income: string;
+  expenses: string;
+  net: string;
+};
+
+export type IncomeVsExpensesResponsePeriod = IncomeVsExpensesAmounts & {
+  period: string;
+};
+
+export type IncomeVsExpensesResponse = {
+  groupBy: IncomeVsExpensesGroupBy;
+  totals: IncomeVsExpensesAmounts;
+  periods: IncomeVsExpensesResponsePeriod[];
+};
+
+export type IncomeVsExpensesPeriod = IncomeVsExpensesResponsePeriod & {
+  label: string;
+  incomeAmount: number;
+  expensesAmount: number;
+  netAmount: number;
+};
+
+export type IncomeVsExpenses = ReportDateRange & {
+  groupBy: IncomeVsExpensesGroupBy;
+  totals: IncomeVsExpensesAmounts;
+  periods: IncomeVsExpensesPeriod[];
+};
+
 export type ExpenseTransaction = {
   date: string;
   amount: string;
