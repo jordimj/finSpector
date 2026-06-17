@@ -7,8 +7,8 @@ export function normalizeTransaction(row: RawTransactionRow): NormalizedTransact
   return {
     date: normalizeDate(row.date),
     amount: Math.abs(Number(amount)).toFixed(2),
-    merchantName: normalizeMerchantName(row.description),
-    originalDescription: row.description.trim(),
+    counterpartyName: normalizeCounterpartyName(row.description),
+    description: normalizeOptionalText(row.description),
     categoryName: normalizeCategoryName(row.category),
     subcategoryName: normalizeOptionalText(row.subcategory),
     type,
@@ -57,7 +57,7 @@ export function normalizeAmount(value: string): string {
   return amount.toFixed(2);
 }
 
-export function normalizeMerchantName(value: string): string {
+export function normalizeCounterpartyName(value: string): string {
   return value
     .replace(/\s+/g, " ")
     .replace(/\b(card|payment|pos|debit|credit)\b/gi, "")

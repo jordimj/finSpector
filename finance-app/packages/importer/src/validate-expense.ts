@@ -11,12 +11,12 @@ export function validateTransaction(transaction: NormalizedTransaction): string[
     errors.push("amount must be a positive number after normalization");
   }
 
-  if (!transaction.originalDescription) {
-    errors.push("description is required");
+  if (transaction.type === "income" && !transaction.description) {
+    errors.push("description is required for income");
   }
 
-  if (!transaction.merchantName) {
-    errors.push("merchant name is required");
+  if (transaction.type === "income" && !transaction.counterpartyName) {
+    errors.push("payer name is required for income");
   }
 
   return errors;

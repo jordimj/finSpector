@@ -1,21 +1,21 @@
 import { closeDb, pool } from "@finance/db";
 
-type TopMerchantRow = {
-  merchant_name: string;
+type TopDescriptionRow = {
+  description: string;
   transaction_count: string;
   total: string;
 };
 
 async function main(): Promise<void> {
   const limit = Number(process.argv[2] ?? 10);
-  const result = await pool.query<TopMerchantRow>(
+  const result = await pool.query<TopDescriptionRow>(
     `
       select
-        merchant_name,
+        coalesce(description, '[no description]') as description,
         count(*)::text as transaction_count,
         sum(amount)::numeric(12, 2) as total
       from expenses
-      group by merchant_name
+      group by coalesce(description, '[no description]')
       order by total desc
       limit $1;
     `,

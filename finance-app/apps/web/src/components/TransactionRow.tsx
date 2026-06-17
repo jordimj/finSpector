@@ -29,7 +29,7 @@ export function TransactionRow({ transaction }: TransactionRowProps) {
 
         <div className='min-w-0'>
           <p className='truncate text-base font-medium text-ink'>
-            {transaction.name}
+            {transaction.description ?? (isIncome ? 'Income' : 'Expense')}
           </p>
           <p className='mt-1 truncate text-sm text-muted md:hidden'>
             {category} · {account.label} ·{' '}

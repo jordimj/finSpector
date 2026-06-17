@@ -56,9 +56,9 @@ It currently demonstrates the future Excel import pipeline with a simple CSV sou
 - normalize dates to `YYYY-MM-DD`
 - normalize amounts to positive decimal strings
 - infer or read transaction type
-- normalize merchant or payer names
+- normalize payer names for income
 - map category and subcategory names
-- detect duplicates by same date, same amount, and same transaction type
+- detect duplicate expenses by same date, amount, account, category, subcategory, and description
 - tag expense rows with an account (`mine`, `shared`, `kids`, or `splitwise`; defaults to `mine`)
 - insert into PostgreSQL
 - print an import summary
@@ -71,7 +71,7 @@ When you replace CSV with real Excel files, customize `packages/importer/src/par
 pnpm analyze:monthly
 pnpm analyze:yearly
 pnpm analyze:categories
-pnpm analyze:merchants
+pnpm analyze:descriptions
 ```
 
 ## Database Tables
@@ -88,12 +88,10 @@ Expenses support:
 - `id`
 - `date`
 - `amount`
-- `merchant_name`
-- `original_description`
+- `description`
 - `account`
 - `category_id`
 - `subcategory_id`
-- `notes`
 - `source_import_id`
 - `created_at`
 - `updated_at`
@@ -102,6 +100,6 @@ Expenses support:
 
 1. Add a real Excel parser for one bank export format.
 2. Add import preview and row-level validation reports.
-3. Improve duplicate detection with merchant and description similarity.
+3. Improve duplicate detection with description similarity.
 4. Add account/source tables if multiple bank accounts are imported.
 5. Add tests around normalization and category mapping.

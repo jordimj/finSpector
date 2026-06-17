@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import { useAccountFilter } from './useAccountFilter';
 import { fetchRecentTransactions } from '../utils';
 
 export type {
@@ -8,8 +9,10 @@ export type {
 } from '../types';
 
 export function useRecentTransactions() {
+  const { selectedAccount } = useAccountFilter();
+
   return useQuery({
-    queryKey: ['transactions', 'recent'],
-    queryFn: fetchRecentTransactions,
+    queryKey: ['transactions', 'recent', selectedAccount],
+    queryFn: () => fetchRecentTransactions(selectedAccount),
   });
 }

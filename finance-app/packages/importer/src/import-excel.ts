@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, isNull } from 'drizzle-orm';
 import {
   categories,
   closeDb,
@@ -110,11 +110,24 @@ async function insertIfNew(
   account: ExpenseAccount,
 ): Promise<boolean> {
   if (transaction.type === 'expense') {
+    const categoryId = await getOrCreateCategory(transaction.categoryName);
+    const subcategoryId = transaction.subcategoryName
+      ? await getOrCreateSubcategory(transaction.subcategoryName, categoryId)
+      : undefined;
+    const description = transaction.description ?? null;
+
     const duplicate = await db.query.expenses.findFirst({
       where: and(
         eq(expenses.date, transaction.date),
         eq(expenses.amount, transaction.amount),
         eq(expenses.account, account),
+        eq(expenses.categoryId, categoryId),
+        subcategoryId === undefined
+          ? isNull(expenses.subcategoryId)
+          : eq(expenses.subcategoryId, subcategoryId),
+        description === null
+          ? isNull(expenses.description)
+          : eq(expenses.description, description),
       ),
     });
 
@@ -122,20 +135,13 @@ async function insertIfNew(
       return false;
     }
 
-    const categoryId = await getOrCreateCategory(transaction.categoryName);
-    const subcategoryId = transaction.subcategoryName
-      ? await getOrCreateSubcategory(transaction.subcategoryName, categoryId)
-      : undefined;
-
     await db.insert(expenses).values({
       date: transaction.date,
       amount: transaction.amount,
-      merchantName: transaction.merchantName,
-      originalDescription: transaction.originalDescription,
+      description,
       account,
       categoryId,
       subcategoryId,
-      notes: transaction.notes,
       sourceImportId: importId,
     });
 
@@ -154,18 +160,27 @@ async function insertIfNew(
   }
 
   const categoryId = await getOrCreateCategory(transaction.categoryName);
+  const description = requireIncomeDescription(transaction);
 
   await db.insert(income).values({
     date: transaction.date,
     amount: transaction.amount,
-    payerName: transaction.merchantName,
-    originalDescription: transaction.originalDescription,
+    payerName: transaction.counterpartyName,
+    originalDescription: description,
     categoryId,
     notes: transaction.notes,
     sourceImportId: importId,
   });
 
   return true;
+}
+
+function requireIncomeDescription(transaction: NormalizedTransaction): string {
+  if (!transaction.description) {
+    throw new Error('description is required for income');
+  }
+
+  return transaction.description;
 }
 
 function parseImportArgs(args: string[]): {

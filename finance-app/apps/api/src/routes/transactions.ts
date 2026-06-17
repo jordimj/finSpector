@@ -11,11 +11,10 @@ type TransactionRow = {
   id: string;
   date: string;
   amount: string;
-  name: string;
-  original_description: string;
+  name: string | null;
+  description: string | null;
   category: string;
   subcategory: string | null;
-  notes: string | null;
   account: ExpenseAccount | null;
   type: 'expense' | 'income';
 };
@@ -58,7 +57,7 @@ export async function registerTransactionRoutes(
       if (query.search) {
         values.push(`%${query.search}%`);
         filters.push(
-          `(name ilike $${values.length} or original_description ilike $${values.length})`,
+          `(name ilike $${values.length} or description ilike $${values.length})`,
         );
       }
 
@@ -77,11 +76,10 @@ export async function registerTransactionRoutes(
               expenses.id,
               expenses.date,
               expenses.amount,
-              expenses.merchant_name as name,
-              expenses.original_description,
+              null::text as name,
+              expenses.description,
               categories.name as category,
               subcategories.name as subcategory,
-              expenses.notes,
               expenses.account,
               'expense' as type
             from expenses
@@ -95,10 +93,9 @@ export async function registerTransactionRoutes(
               income.date,
               income.amount,
               income.payer_name as name,
-              income.original_description,
+              income.original_description as description,
               categories.name as category,
               null as subcategory,
-              income.notes,
               null as account,
               'income' as type
             from income
@@ -109,15 +106,14 @@ export async function registerTransactionRoutes(
             to_char(date, 'YYYY-MM-DD') as date,
             amount::numeric(12, 2)::text as amount,
             name,
-            original_description,
+            description,
             category,
             subcategory,
-            notes,
             account,
             type
           from transactions
           ${whereClause}
-          order by date desc, name
+          order by date desc, coalesce(name, description, '')
           limit ${limitParameter}
           offset ${offsetParameter};
         `,
@@ -139,10 +135,9 @@ function toTransactionResponse(row: TransactionRow) {
     date: row.date,
     amount: row.amount,
     name: row.name,
-    originalDescription: row.original_description,
+    description: row.description,
     category: row.category,
     subcategory: row.subcategory,
-    notes: row.notes,
     account: row.account,
     type: row.type,
   };

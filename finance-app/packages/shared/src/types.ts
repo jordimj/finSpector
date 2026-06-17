@@ -16,8 +16,8 @@ export type RawTransactionRow = {
 export type NormalizedTransaction = {
   date: string;
   amount: string;
-  merchantName: string;
-  originalDescription: string;
+  counterpartyName: string;
+  description?: string;
   categoryName: string;
   subcategoryName?: string;
   type: TransactionType;

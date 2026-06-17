@@ -12,6 +12,7 @@ import type {
   LastMonthExpenses,
   RecentTransaction,
   RecentTransactionsResponse,
+  AccountFilter,
   ReportDateRange,
 } from '../types';
 
@@ -20,6 +21,7 @@ const recentTransactionLimit = 10;
 
 export async function fetchLastMonthExpenses(
   range: DateRange,
+  account: AccountFilter = null,
 ): Promise<LastMonthExpenses> {
   const transactions: ExpenseTransaction[] = [];
   let offset = 0;
@@ -32,6 +34,7 @@ export async function fetchLastMonthExpenses(
       limit: String(lastMonthExpensePageSize),
       offset: String(offset),
     });
+    appendAccountParam(params, account);
 
     const response = await fetchJson<ExpenseTransactionsResponse>({
       path: `/api/transactions?${params.toString()}`,
@@ -61,8 +64,9 @@ export async function fetchLastMonthExpenses(
 
 export async function fetchCategorySpend(
   range: ReportDateRange,
+  account: AccountFilter = null,
 ): Promise<CategorySpend> {
-  const queryString = toReportQueryString(range);
+  const queryString = toReportQueryString(range, account);
 
   const response = await fetchJson<CategorySpendResponse>({
     path: `/api/reports/category-spend${queryString ? `?${queryString}` : ''}`,
@@ -89,8 +93,9 @@ export async function fetchCategorySpend(
 
 export async function fetchIncomeVsExpenses(
   range: ReportDateRange,
+  account: AccountFilter = null,
 ): Promise<IncomeVsExpenses> {
-  const queryString = toReportQueryString(range);
+  const queryString = toReportQueryString(range, account);
 
   const response = await fetchJson<IncomeVsExpensesResponse>({
     path: `/api/reports/income-vs-expenses${queryString ? `?${queryString}` : ''}`,
@@ -110,11 +115,14 @@ export async function fetchIncomeVsExpenses(
   };
 }
 
-export function fetchRecentTransactions(): Promise<RecentTransactionsResponse> {
+export function fetchRecentTransactions(
+  account: AccountFilter = null,
+): Promise<RecentTransactionsResponse> {
   const params = new URLSearchParams({
     limit: String(recentTransactionLimit),
     offset: '0',
   });
+  appendAccountParam(params, account);
 
   return fetchJson<RecentTransactionsResponse>({
     path: `/api/transactions?${params.toString()}`,
@@ -322,8 +330,12 @@ export function formatTransactionCurrency(value: number): string {
   }).format(value);
 }
 
-function toReportQueryString(range: ReportDateRange): string {
+function toReportQueryString(
+  range: ReportDateRange,
+  account: AccountFilter,
+): string {
   const params = new URLSearchParams();
+  appendAccountParam(params, account);
 
   if (range.startDate !== undefined) {
     params.set('from', range.startDate);
@@ -334,4 +346,13 @@ function toReportQueryString(range: ReportDateRange): string {
   }
 
   return params.toString();
+}
+
+function appendAccountParam(
+  params: URLSearchParams,
+  account: AccountFilter,
+): void {
+  if (account !== null) {
+    params.set('account', account);
+  }
 }

@@ -7,7 +7,8 @@
     "monthly": "tsx src/monthly-cashflow.ts",
     "yearly": "tsx src/yearly-summary.ts",
     "categories": "tsx src/category-breakdown.ts",
-    "merchants": "tsx src/top-merchants.ts",
+    "descriptions": "tsx src/top-descriptions.ts",
+    "merchants": "tsx src/top-descriptions.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

@@ -71,11 +71,9 @@ export const expenses = pgTable(
     id: uuid("id").primaryKey().defaultRandom(),
     date: date("date").notNull(),
     amount: numeric("amount", { precision: 12, scale: 2 }).notNull(),
-    merchantName: text("merchant_name").notNull(),
-    originalDescription: text("original_description").notNull(),
+    description: text("description"),
     categoryId: integer("category_id").notNull().references(() => categories.id),
     subcategoryId: integer("subcategory_id"),
-    notes: text("notes"),
     account: expenseAccount("account").notNull().default("mine"),
     sourceImportId: uuid("source_import_id").references(() => imports.id),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -85,11 +83,13 @@ export const expenses = pgTable(
     duplicateLookupIdx: index("expenses_duplicate_lookup_idx").on(
       table.date,
       table.amount,
-      table.account
+      table.account,
+      table.categoryId,
+      table.subcategoryId,
+      table.description
     ),
     categoryIdx: index("expenses_category_id_idx").on(table.categoryId),
     subcategoryIdx: index("expenses_subcategory_id_idx").on(table.subcategoryId),
-    merchantIdx: index("expenses_merchant_name_idx").on(table.merchantName),
     subcategoryCategoryFk: foreignKey({
       columns: [table.subcategoryId, table.categoryId],
       foreignColumns: [subcategories.id, subcategories.categoryId],

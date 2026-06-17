@@ -8,6 +8,10 @@ export type ReportDateRange = {
   endDate?: string;
 };
 
+export type ExpenseAccount = 'mine' | 'shared' | 'kids' | 'splitwise';
+
+export type AccountFilter = ExpenseAccount | null;
+
 export type LastMonthExpensePoint = {
   date: string;
   label: string;
@@ -89,11 +93,10 @@ export type RecentTransaction = {
   id: string;
   date: string;
   amount: string;
-  name: string;
-  originalDescription: string;
+  name: string | null;
+  description: string | null;
   category: string;
   subcategory: string | null;
-  notes: string | null;
   account: string | null;
   type: TransactionType;
 };

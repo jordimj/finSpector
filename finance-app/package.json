@@ -17,6 +17,7 @@
     "analyze:monthly": "corepack pnpm --filter @finance/analytics monthly",
     "analyze:yearly": "corepack pnpm --filter @finance/analytics yearly",
     "analyze:categories": "corepack pnpm --filter @finance/analytics categories",
+    "analyze:descriptions": "corepack pnpm --filter @finance/analytics descriptions",
     "analyze:merchants": "corepack pnpm --filter @finance/analytics merchants",
     "typecheck": "corepack pnpm -r typecheck"
   },
