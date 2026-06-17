@@ -10,18 +10,26 @@ export type RawTransactionRow = {
   category?: string;
   subcategory?: string;
   type?: string;
-  notes?: string;
 };
 
 export type NormalizedTransaction = {
   date: string;
   amount: string;
-  counterpartyName: string;
   description?: string;
   categoryName: string;
   subcategoryName?: string;
   type: TransactionType;
-  notes?: string;
+};
+
+export type Transaction = {
+  id: string;
+  date: string;
+  amount: string;
+  description: string | null;
+  category: string;
+  subcategory: string | null;
+  account: string | null;
+  type: TransactionType;
 };
 
 export type ImportSummary = {

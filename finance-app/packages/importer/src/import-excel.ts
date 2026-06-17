@@ -148,10 +148,24 @@ async function insertIfNew(
     return true;
   }
 
+  const categoryId = await getOrCreateCategory(transaction.categoryName);
+  const subcategoryId = transaction.subcategoryName
+    ? await getOrCreateSubcategory(transaction.subcategoryName, categoryId)
+    : undefined;
+  const description = transaction.description ?? null;
+
   const duplicate = await db.query.income.findFirst({
     where: and(
       eq(income.date, transaction.date),
       eq(income.amount, transaction.amount),
+      eq(income.account, account),
+      eq(income.categoryId, categoryId),
+      subcategoryId === undefined
+        ? isNull(income.subcategoryId)
+        : eq(income.subcategoryId, subcategoryId),
+      description === null
+        ? isNull(income.description)
+        : eq(income.description, description),
     ),
   });
 
@@ -159,28 +173,17 @@ async function insertIfNew(
     return false;
   }
 
-  const categoryId = await getOrCreateCategory(transaction.categoryName);
-  const description = requireIncomeDescription(transaction);
-
   await db.insert(income).values({
     date: transaction.date,
     amount: transaction.amount,
-    payerName: transaction.counterpartyName,
-    originalDescription: description,
+    description,
+    account,
     categoryId,
-    notes: transaction.notes,
+    subcategoryId,
     sourceImportId: importId,
   });
 
   return true;
-}
-
-function requireIncomeDescription(transaction: NormalizedTransaction): string {
-  if (!transaction.description) {
-    throw new Error('description is required for income');
-  }
-
-  return transaction.description;
 }
 
 function parseImportArgs(args: string[]): {

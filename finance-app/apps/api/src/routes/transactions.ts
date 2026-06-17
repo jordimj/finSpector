@@ -11,7 +11,6 @@ type TransactionRow = {
   id: string;
   date: string;
   amount: string;
-  name: string | null;
   description: string | null;
   category: string;
   subcategory: string | null;
@@ -56,9 +55,7 @@ export async function registerTransactionRoutes(
 
       if (query.search) {
         values.push(`%${query.search}%`);
-        filters.push(
-          `(name ilike $${values.length} or description ilike $${values.length})`,
-        );
+        filters.push(`description ilike $${values.length}`);
       }
 
       values.push(query.limit);
@@ -76,7 +73,6 @@ export async function registerTransactionRoutes(
               expenses.id,
               expenses.date,
               expenses.amount,
-              null::text as name,
               expenses.description,
               categories.name as category,
               subcategories.name as subcategory,
@@ -92,20 +88,19 @@ export async function registerTransactionRoutes(
               income.id,
               income.date,
               income.amount,
-              income.payer_name as name,
-              income.original_description as description,
+              income.description,
               categories.name as category,
-              null as subcategory,
-              null as account,
+              subcategories.name as subcategory,
+              income.account,
               'income' as type
             from income
             join categories on categories.id = income.category_id
+            left join subcategories on subcategories.id = income.subcategory_id
           )
           select
             id,
             to_char(date, 'YYYY-MM-DD') as date,
             amount::numeric(12, 2)::text as amount,
-            name,
             description,
             category,
             subcategory,
@@ -113,7 +108,7 @@ export async function registerTransactionRoutes(
             type
           from transactions
           ${whereClause}
-          order by date desc, coalesce(name, description, '')
+          order by date desc, coalesce(description, '')
           limit ${limitParameter}
           offset ${offsetParameter};
         `,
@@ -134,7 +129,6 @@ function toTransactionResponse(row: TransactionRow) {
     id: row.id,
     date: row.date,
     amount: row.amount,
-    name: row.name,
     description: row.description,
     category: row.category,
     subcategory: row.subcategory,

@@ -1,3 +1,9 @@
+import type {
+  ExpenseAccount,
+  Transaction,
+  TransactionType,
+} from '@finance/shared';
+
 export type DateRange = {
   startDate: string;
   endDate: string;
@@ -7,8 +13,6 @@ export type ReportDateRange = {
   startDate?: string;
   endDate?: string;
 };
-
-export type ExpenseAccount = 'mine' | 'shared' | 'kids' | 'splitwise';
 
 export type AccountFilter = ExpenseAccount | null;
 
@@ -87,22 +91,19 @@ export type ExpenseTransactionsResponse = {
   offset: number;
 };
 
-export type TransactionType = 'expense' | 'income';
-
 export type RecentTransaction = {
   id: string;
   date: string;
   amount: string;
-  name: string | null;
   description: string | null;
   category: string;
   subcategory: string | null;
-  account: string | null;
+  account: ExpenseAccount | null;
   type: TransactionType;
 };
 
 export type RecentTransactionsResponse = {
-  transactions: RecentTransaction[];
+  transactions: Transaction[];
   limit: number;
   offset: number;
 };

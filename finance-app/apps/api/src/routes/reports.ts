@@ -269,6 +269,7 @@ function buildReportFilters(query: ReportQuery): {
   if (query.account) {
     values.push(query.account);
     expenseFilters.push(`account = $${values.length}`);
+    incomeFilters.push(`account = $${values.length}`);
   }
 
   if (query.from) {

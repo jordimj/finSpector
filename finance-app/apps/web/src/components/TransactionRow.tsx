@@ -1,9 +1,9 @@
-import type { RecentTransaction } from '../types';
 import { formatTransactionAmount, formatTransactionDate } from '../utils';
 import { getCategoryIcon } from './categoryVisuals';
+import type { Transaction } from '@finance/shared';
 
 type TransactionRowProps = {
-  transaction: RecentTransaction;
+  transaction: Transaction;
 };
 
 export function TransactionRow({ transaction }: TransactionRowProps) {

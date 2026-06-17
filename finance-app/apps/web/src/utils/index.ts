@@ -10,11 +10,11 @@ import type {
   IncomeVsExpensesResponse,
   LastMonthExpensePoint,
   LastMonthExpenses,
-  RecentTransaction,
   RecentTransactionsResponse,
   AccountFilter,
   ReportDateRange,
 } from '../types';
+import type { Transaction } from '@finance/shared';
 
 const lastMonthExpensePageSize = 500;
 const recentTransactionLimit = 10;
@@ -312,9 +312,7 @@ export function formatTransactionDate(date: string): string {
   }).format(parseDateKey(date));
 }
 
-export function formatTransactionAmount(
-  transaction: RecentTransaction,
-): string {
+export function formatTransactionAmount(transaction: Transaction): string {
   const amount = Number(transaction.amount);
   const prefix = transaction.type === 'income' ? '+' : '-';
 

@@ -7,12 +7,10 @@ export function normalizeTransaction(row: RawTransactionRow): NormalizedTransact
   return {
     date: normalizeDate(row.date),
     amount: Math.abs(Number(amount)).toFixed(2),
-    counterpartyName: normalizeCounterpartyName(row.description),
     description: normalizeOptionalText(row.description),
     categoryName: normalizeCategoryName(row.category),
     subcategoryName: normalizeOptionalText(row.subcategory),
-    type,
-    notes: normalizeOptionalText(row.notes)
+    type
   };
 }
 
@@ -55,14 +53,6 @@ export function normalizeAmount(value: string): string {
   }
 
   return amount.toFixed(2);
-}
-
-export function normalizeCounterpartyName(value: string): string {
-  return value
-    .replace(/\s+/g, " ")
-    .replace(/\b(card|payment|pos|debit|credit)\b/gi, "")
-    .trim()
-    .toUpperCase();
 }
 
 function normalizeCategoryName(value: string | undefined): string {

@@ -56,9 +56,8 @@ It currently demonstrates the future Excel import pipeline with a simple CSV sou
 - normalize dates to `YYYY-MM-DD`
 - normalize amounts to positive decimal strings
 - infer or read transaction type
-- normalize payer names for income
 - map category and subcategory names
-- detect duplicate expenses by same date, amount, account, category, subcategory, and description
+- detect duplicates by same date, amount, account, category, subcategory, and description
 - tag expense rows with an account (`mine`, `shared`, `kids`, or `splitwise`; defaults to `mine`)
 - insert into PostgreSQL
 - print an import summary
@@ -84,6 +83,19 @@ pnpm analyze:descriptions
 - `schema_migrations`
 
 Expenses support:
+
+- `id`
+- `date`
+- `amount`
+- `description`
+- `account`
+- `category_id`
+- `subcategory_id`
+- `source_import_id`
+- `created_at`
+- `updated_at`
+
+Income supports the same shape:
 
 - `id`
 - `date`

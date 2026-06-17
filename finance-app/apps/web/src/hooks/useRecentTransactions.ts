@@ -2,12 +2,6 @@ import { useQuery } from '@tanstack/react-query';
 import { useAccountFilter } from './useAccountFilter';
 import { fetchRecentTransactions } from '../utils';
 
-export type {
-  RecentTransaction,
-  RecentTransactionsResponse,
-  TransactionType,
-} from '../types';
-
 export function useRecentTransactions() {
   const { selectedAccount } = useAccountFilter();
 
