@@ -7,7 +7,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import type { LastMonthExpensePoint } from '../types';
+import type { LastMonthExpensePoint } from '../hooks/useLastMonthExpenses';
 import { formatCompactCurrency } from '../utils';
 import { useHasElementSize } from '../hooks/useHasElementSize';
 import { LastMonthExpenseChartState } from './LastMonthExpenseChartState';

@@ -1,4 +1,4 @@
-import type { IncomeVsExpensesPeriod } from '../types';
+import type { IncomeVsExpensesPeriod } from '../hooks/useIncomeVsExpenses';
 import { formatCurrency } from '../utils';
 
 type IncomeVsExpensesTooltipProps = {

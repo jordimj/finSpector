@@ -1,14 +1,21 @@
 import { useQuery } from '@tanstack/react-query';
-import { fetchCategories } from '../utils';
+import { fetchJson } from '../lib/api';
 
-export type {
-  CategoryListResponse,
-  CategoryListResponseCategory,
-} from '../types';
+interface Category {
+  id: number;
+  name: string;
+  subcategories: Array<{
+    id: number;
+    name: string;
+  }>;
+}
 
 export function useCategories() {
   return useQuery({
     queryKey: ['categories'],
-    queryFn: fetchCategories,
+    queryFn: () =>
+      fetchJson<Array<Category>>({
+        path: '/api/categories',
+      }),
   });
 }

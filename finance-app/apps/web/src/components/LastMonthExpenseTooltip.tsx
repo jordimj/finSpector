@@ -1,4 +1,4 @@
-import type { LastMonthExpensePoint } from '../types';
+import type { LastMonthExpensePoint } from '../hooks/useLastMonthExpenses';
 import { formatCurrency } from '../utils';
 
 type LastMonthExpenseTooltipProps = {

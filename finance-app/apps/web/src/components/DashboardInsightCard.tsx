@@ -1,6 +1,9 @@
 import { Rocket, Target } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import type { LastMonthExpenses, LastMonthExpensePoint } from '../types';
+import type {
+  LastMonthExpensePoint,
+  LastMonthExpenses,
+} from '../hooks/useLastMonthExpenses';
 import { formatCurrency } from '../utils';
 
 type DashboardInsightCardProps = {

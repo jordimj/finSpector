@@ -1,10 +1,10 @@
-import type { CategorySpendCategory } from '../types';
+import type { CategorySpend } from '../hooks/useCategorySpend';
 import { formatCurrency, formatPercentage } from '../utils';
 
 type CategorySpendTooltipProps = {
   active?: boolean;
   payload?: Array<{
-    payload?: CategorySpendCategory;
+    payload?: CategorySpend;
   }>;
 };
 

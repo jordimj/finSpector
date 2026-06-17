@@ -1,13 +1,13 @@
-import type { CategorySpendCategory } from '../types';
+import type { CategorySpend } from '../hooks/useCategorySpend';
 import { formatCurrency } from '../utils';
 import { CategoryRows } from './CategoryRows';
 
 type CategoriesCardProps = {
-  categories: CategorySpendCategory[];
+  categories: CategorySpend[];
   isError: boolean;
   isLoading: boolean;
   itemLabel?: string;
-  onCategorySelect?: (category: CategorySpendCategory) => void;
+  onCategorySelect?: (category: CategorySpend) => void;
   periodLabel: string;
   title?: string;
   total: number;

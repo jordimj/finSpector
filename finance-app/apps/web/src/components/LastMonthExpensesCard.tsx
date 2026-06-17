@@ -1,4 +1,4 @@
-import { LastMonthExpenses } from '../types';
+import type { LastMonthExpenses } from '../hooks/useLastMonthExpenses';
 import { formatCurrency, formatDateRange } from '../utils';
 import { LastMonthExpenseChart } from './LastMonthExpenseChart';
 

@@ -1,14 +1,14 @@
 import { PieChart } from 'lucide-react';
-import type { CategorySpendCategory } from '../types';
+import type { CategorySpend } from '../hooks/useCategorySpend';
 import { formatCurrency, formatPercentage } from '../utils';
 import { getCategoryColor } from './categoryVisuals';
 import { CategorySpendChart } from './CategorySpendChart';
 
 type ExpenseBreakdownCardProps = {
-  categories: CategorySpendCategory[];
+  categories: CategorySpend[];
   isError: boolean;
   isLoading: boolean;
-  onCategorySelect?: (category: CategorySpendCategory) => void;
+  onCategorySelect?: (category: CategorySpend) => void;
   title?: string;
   total: number;
   totalLabel?: string;

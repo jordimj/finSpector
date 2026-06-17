@@ -1,13 +1,13 @@
-import type { CategorySpendCategory } from '../types';
+import type { CategorySpend } from '../hooks/useCategorySpend';
 import { getCategoryColor } from './categoryVisuals';
 import { CategoryRow } from './CategoryRow';
 import { CategoryState } from './CategoryState';
 
 type CategoryRowsProps = {
-  categories: CategorySpendCategory[];
+  categories: CategorySpend[];
   isError: boolean;
   isLoading: boolean;
-  onCategorySelect?: (category: CategorySpendCategory) => void;
+  onCategorySelect?: (category: CategorySpend) => void;
   total: number;
 };
 

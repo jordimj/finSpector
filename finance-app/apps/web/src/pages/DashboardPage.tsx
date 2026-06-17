@@ -1,4 +1,5 @@
 import { CreditCard, PiggyBank, Users } from 'lucide-react';
+import type { Transaction } from '@finance/shared';
 import type { ReactNode } from 'react';
 import { DashboardInsightCard } from '../components/DashboardInsightCard';
 import { LastMonthExpensesCard } from '../components/LastMonthExpensesCard';
@@ -6,7 +7,6 @@ import { RecentTransactionsCard } from '../components/RecentTransactionsCard';
 import { SummaryTile } from '../components/SummaryTile';
 import { useLastMonthExpenses } from '../hooks/useLastMonthExpenses';
 import { useRecentTransactions } from '../hooks/useRecentTransactions';
-import type { RecentTransaction } from '../types';
 import { formatTransactionCurrency } from '../utils';
 
 export function DashboardPage() {
@@ -111,7 +111,7 @@ const accountConfigs = [
 ] as const;
 
 function buildAccountSummaries(
-  transactions: RecentTransaction[],
+  transactions: Transaction[],
   isLoading: boolean,
   isError: boolean,
 ): AccountSummary[] {

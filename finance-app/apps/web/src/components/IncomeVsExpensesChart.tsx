@@ -8,7 +8,7 @@ import {
   YAxis,
 } from 'recharts';
 import { useHasElementSize } from '../hooks/useHasElementSize';
-import type { IncomeVsExpensesPeriod } from '../types';
+import type { IncomeVsExpensesPeriod } from '../hooks/useIncomeVsExpenses';
 import { formatCompactCurrency } from '../utils';
 import { IncomeVsExpensesChartState } from './IncomeVsExpensesChartState';
 import { IncomeVsExpensesTooltip } from './IncomeVsExpensesTooltip';

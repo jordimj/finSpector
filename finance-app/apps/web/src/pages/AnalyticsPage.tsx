@@ -5,10 +5,13 @@ import { CategoriesCard } from '../components/CategoriesCard';
 import { ExpenseBreakdownCard } from '../components/ExpenseBreakdownCard';
 import { IncomeVsExpensesCard } from '../components/IncomeVsExpensesCard';
 import { useCategories } from '../hooks/useCategories';
-import { useCategorySpend } from '../hooks/useCategorySpend';
+import {
+  useCategorySpend,
+  type CategorySpend,
+} from '../hooks/useCategorySpend';
 import { useIncomeVsExpenses } from '../hooks/useIncomeVsExpenses';
 import { cn } from '../lib/utils';
-import type { CategorySpendCategory, ReportDateRange } from '../types';
+import type { ReportDateRange } from '../types';
 import {
   formatReportDateRange,
   getAllTimeRange,
@@ -64,17 +67,17 @@ export function AnalyticsPage() {
   const datePickerRef = useRef<HTMLDivElement>(null);
   const [searchParams, setSearchParams] = useSearchParams();
   const selectedCategoryId = parseCategoryId(searchParams.get('categoryId'));
-  const categoryDirectory = useCategories();
+
   const categorySpend = useCategorySpend(dateRange, selectedCategoryId);
   const incomeVsExpenses = useIncomeVsExpenses(dateRange, selectedCategoryId);
   const categories = categorySpend.data?.categories ?? [];
   const total = categorySpend.data?.total ?? 0;
   const periodLabel = formatReportDateRange(dateRange);
   const isSubcategory = selectedCategoryId !== undefined;
+
+  const { data: nestedCategories } = useCategories();
   const selectedCategory = isSubcategory
-    ? categoryDirectory.data?.categories.find(
-        (category) => category.id === selectedCategoryId,
-      )
+    ? nestedCategories?.find((category) => category.id === selectedCategoryId)
     : undefined;
   const selectedCategoryLabel = selectedCategory?.name ?? 'Selected category';
   const pageTitle = isSubcategory ? selectedCategoryLabel : 'Spending insights';
@@ -158,10 +161,8 @@ export function AnalyticsPage() {
     });
   }
 
-  function handleCategorySelect(category: CategorySpendCategory) {
-    if (category.id === null) {
-      return;
-    }
+  function handleCategorySelect(category: CategorySpend) {
+    if (category.id === null) return;
 
     const nextSearchParams = new URLSearchParams(searchParams);
     nextSearchParams.set('categoryId', String(category.id));

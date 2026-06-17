@@ -12,7 +12,7 @@ export const apiBaseUrl =
 export async function fetchJson<TResponse>({
   path,
   ...init
-}: FetchJsonOptions): Promise<TResponse> {
+}: FetchJsonOptions) {
   const normalizedPath = path.startsWith('/') ? path : `/${path}`;
   const response = await fetch(`${apiBaseUrl}${normalizedPath}`, {
     headers: {

@@ -1,16 +1,16 @@
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
 import { useHasElementSize } from '../hooks/useHasElementSize';
-import type { CategorySpendCategory } from '../types';
+import type { CategorySpend } from '../hooks/useCategorySpend';
 import { formatCompactCurrency } from '../utils';
 import { getCategoryColor } from './categoryVisuals';
 import { CategorySpendChartState } from './CategorySpendChartState';
 import { CategorySpendTooltip } from './CategorySpendTooltip';
 
 type CategorySpendChartProps = {
-  categories: CategorySpendCategory[];
+  categories: CategorySpend[];
   isError: boolean;
   isLoading: boolean;
-  onCategorySelect?: (category: CategorySpendCategory) => void;
+  onCategorySelect?: (category: CategorySpend) => void;
   total: number;
 };
 

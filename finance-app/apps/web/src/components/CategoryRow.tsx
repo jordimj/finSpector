@@ -1,14 +1,16 @@
-import type { CategorySpendCategory } from '../types';
+import type { CategorySpend } from '../hooks/useCategorySpend';
 import { formatCurrency, formatPercentage } from '../utils';
 import { getCategoryIcon } from './categoryVisuals';
 
 type CategoryRowProps = {
-  category: CategorySpendCategory;
+  category: CategorySpend;
   color: string;
-  onSelect?: (category: CategorySpendCategory) => void;
+  onSelect?: (category: CategorySpend) => void;
 };
 
 export function CategoryRow({ category, color, onSelect }: CategoryRowProps) {
+  console.log({ category });
+
   const width =
     category.share > 0 ? `${Math.max(category.share * 100, 3)}%` : '0%';
   const Icon = getCategoryIcon(category.category);

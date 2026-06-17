@@ -94,8 +94,10 @@ export async function registerReportRoutes(
     },
     async (request) => {
       const query = toReportQuery(request.query);
-      const { expenseFilters, incomeFilters, values } =
-        buildReportFilters(query, { filterExpensesByCategory: true });
+      const { expenseFilters, incomeFilters, values } = buildReportFilters(
+        query,
+        { filterExpensesByCategory: true },
+      );
       const grouping = getIncomeVsExpensesGrouping(query);
 
       const result = await pool.query<IncomeVsExpensesRow>(
@@ -201,14 +203,12 @@ export async function registerReportRoutes(
               values,
             );
 
-      return {
-        categories: result.rows.map((row) => ({
-          id: row.category_id,
-          category: row.category,
-          transactionCount: Number(row.transaction_count),
-          total: row.total,
-        })),
-      };
+      return result.rows.map((row) => ({
+        id: row.category_id,
+        category: row.category,
+        transactionCount: Number(row.transaction_count),
+        total: row.total,
+      }));
     },
   );
 }

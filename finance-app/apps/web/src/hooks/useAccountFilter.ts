@@ -9,7 +9,7 @@ type AccountFilterContextValue = {
 export const AccountFilterContext =
   createContext<AccountFilterContextValue | null>(null);
 
-export function useAccountFilter(): AccountFilterContextValue {
+export function useAccountFilter() {
   const context = useContext(AccountFilterContext);
 
   if (context === null) {

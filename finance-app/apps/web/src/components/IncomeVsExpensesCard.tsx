@@ -1,5 +1,5 @@
 import { TrendingDown, TrendingUp } from 'lucide-react';
-import type { IncomeVsExpenses } from '../types';
+import type { IncomeVsExpenses } from '../hooks/useIncomeVsExpenses';
 import { formatCurrency, formatPercentage } from '../utils';
 import { IncomeVsExpensesChart } from './IncomeVsExpensesChart';
 

@@ -32,9 +32,7 @@ export async function registerCategoryRoutes(
       order by categories.name, subcategories.name;
     `);
 
-    return {
-      categories: groupCategoryRows(result.rows),
-    };
+    return groupCategoryRows(result.rows);
   });
 }
 
