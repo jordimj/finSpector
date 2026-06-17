@@ -10,6 +10,7 @@ type CategorySpendChartProps = {
   categories: CategorySpendCategory[];
   isError: boolean;
   isLoading: boolean;
+  onCategorySelect?: (category: CategorySpendCategory) => void;
   total: number;
 };
 
@@ -17,6 +18,7 @@ export function CategorySpendChart({
   categories,
   isError,
   isLoading,
+  onCategorySelect,
   total,
 }: CategorySpendChartProps) {
   const [chartContainerRef, hasChartSize, chartSize] =
@@ -87,7 +89,13 @@ export function CategorySpendChart({
               {categories.map((category, index) => (
                 <Cell
                   key={category.id ?? category.category}
+                  className={onCategorySelect ? 'cursor-pointer' : undefined}
                   fill={getCategoryColor(index)}
+                  onClick={
+                    onCategorySelect
+                      ? () => onCategorySelect(category)
+                      : undefined
+                  }
                 />
               ))}
             </Pie>

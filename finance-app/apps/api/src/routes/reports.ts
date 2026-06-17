@@ -89,13 +89,13 @@ export async function registerReportRoutes(
     '/income-vs-expenses',
     {
       schema: {
-        querystring: reportQuerySchema(),
+        querystring: reportQuerySchema({ includeCategoryId: true }),
       },
     },
     async (request) => {
       const query = toReportQuery(request.query);
       const { expenseFilters, incomeFilters, values } =
-        buildReportFilters(query);
+        buildReportFilters(query, { filterExpensesByCategory: true });
       const grouping = getIncomeVsExpensesGrouping(query);
 
       const result = await pool.query<IncomeVsExpensesRow>(
@@ -257,7 +257,13 @@ function appendExpenseFilter(
   return `${existingFilter} and ${clause}`;
 }
 
-function buildReportFilters(query: ReportQuery): {
+function buildReportFilters(
+  query: ReportQuery,
+  options: {
+    filterExpensesByCategory?: boolean;
+    filterIncomeByCategory?: boolean;
+  } = {},
+): {
   expenseFilters: string;
   incomeFilters: string;
   values: Array<string | number>;
@@ -282,6 +288,16 @@ function buildReportFilters(query: ReportQuery): {
     values.push(query.to);
     expenseFilters.push(`date <= $${values.length}`);
     incomeFilters.push(`date <= $${values.length}`);
+  }
+
+  if (query.categoryId !== undefined && options.filterExpensesByCategory) {
+    values.push(query.categoryId);
+    expenseFilters.push(`category_id = $${values.length}`);
+  }
+
+  if (query.categoryId !== undefined && options.filterIncomeByCategory) {
+    values.push(query.categoryId);
+    incomeFilters.push(`category_id = $${values.length}`);
   }
 
   return {

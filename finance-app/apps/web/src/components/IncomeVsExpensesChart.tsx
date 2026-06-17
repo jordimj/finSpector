@@ -15,12 +15,14 @@ import { IncomeVsExpensesTooltip } from './IncomeVsExpensesTooltip';
 
 type IncomeVsExpensesChartProps = {
   data: IncomeVsExpensesPeriod[];
+  expenseLabel?: string;
   isError: boolean;
   isLoading: boolean;
 };
 
 export function IncomeVsExpensesChart({
   data,
+  expenseLabel = 'Expenses',
   isError,
   isLoading,
 }: IncomeVsExpensesChartProps) {
@@ -119,7 +121,7 @@ export function IncomeVsExpensesChart({
             />
             <Tooltip
               cursor={{ fill: 'rgb(184 190 253 / 0.08)' }}
-              content={<IncomeVsExpensesTooltip />}
+              content={<IncomeVsExpensesTooltip expenseLabel={expenseLabel} />}
             />
             <Bar
               dataKey='incomeAmount'
@@ -130,7 +132,7 @@ export function IncomeVsExpensesChart({
             />
             <Bar
               dataKey='expensesAmount'
-              name='Expenses'
+              name={expenseLabel}
               fill='#b8befd'
               maxBarSize={24}
               radius={[4, 4, 0, 0]}

@@ -1,12 +1,14 @@
-import { CalendarDays, Check, ChevronDown } from 'lucide-react';
+import { CalendarDays, Check, ChevronDown, ChevronLeft } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { CategoriesCard } from '../components/CategoriesCard';
 import { ExpenseBreakdownCard } from '../components/ExpenseBreakdownCard';
 import { IncomeVsExpensesCard } from '../components/IncomeVsExpensesCard';
+import { useCategories } from '../hooks/useCategories';
 import { useCategorySpend } from '../hooks/useCategorySpend';
 import { useIncomeVsExpenses } from '../hooks/useIncomeVsExpenses';
 import { cn } from '../lib/utils';
-import type { ReportDateRange } from '../types';
+import type { CategorySpendCategory, ReportDateRange } from '../types';
 import {
   formatReportDateRange,
   getAllTimeRange,
@@ -60,11 +62,22 @@ export function AnalyticsPage() {
     useState<DateRangePresetKey | null>('this-month');
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
   const datePickerRef = useRef<HTMLDivElement>(null);
-  const categorySpend = useCategorySpend(dateRange);
-  const incomeVsExpenses = useIncomeVsExpenses(dateRange);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const selectedCategoryId = parseCategoryId(searchParams.get('categoryId'));
+  const categoryDirectory = useCategories();
+  const categorySpend = useCategorySpend(dateRange, selectedCategoryId);
+  const incomeVsExpenses = useIncomeVsExpenses(dateRange, selectedCategoryId);
   const categories = categorySpend.data?.categories ?? [];
   const total = categorySpend.data?.total ?? 0;
   const periodLabel = formatReportDateRange(dateRange);
+  const isSubcategory = selectedCategoryId !== undefined;
+  const selectedCategory = isSubcategory
+    ? categoryDirectory.data?.categories.find(
+        (category) => category.id === selectedCategoryId,
+      )
+    : undefined;
+  const selectedCategoryLabel = selectedCategory?.name ?? 'Selected category';
+  const pageTitle = isSubcategory ? selectedCategoryLabel : 'Spending insights';
   const selectedPreset = dateRangePresets.find(
     (preset) => preset.key === selectedPresetKey,
   );
@@ -145,16 +158,42 @@ export function AnalyticsPage() {
     });
   }
 
+  function handleCategorySelect(category: CategorySpendCategory) {
+    if (category.id === null) {
+      return;
+    }
+
+    const nextSearchParams = new URLSearchParams(searchParams);
+    nextSearchParams.set('categoryId', String(category.id));
+    setSearchParams(nextSearchParams);
+  }
+
+  function handleClearCategory() {
+    const nextSearchParams = new URLSearchParams(searchParams);
+    nextSearchParams.delete('categoryId');
+    setSearchParams(nextSearchParams);
+  }
+
   return (
     <section className='mx-auto max-w-7xl pb-8'>
       <div className='mb-7 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between'>
         <div>
+          {isSubcategory ? (
+            <button
+              type='button'
+              className='mb-3 inline-flex h-9 items-center gap-2 rounded-md border border-line bg-panel px-3 text-sm font-semibold text-muted-strong transition hover:bg-panel-raised hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-lavender'
+              onClick={handleClearCategory}
+            >
+              <ChevronLeft className='size-4 shrink-0' aria-hidden='true' />
+              All categories
+            </button>
+          ) : null}
           <h1 className='text-3xl font-semibold tracking-normal text-ink md:text-4xl'>
-            Spending insights
+            {pageTitle}
           </h1>
           <div className='mt-3 flex flex-wrap items-center gap-3'>
             <span className='inline-flex h-6 items-center rounded-full bg-accent-green/15 px-3 text-xs font-bold uppercase tracking-[0.14em] text-accent-green'>
-              Live update
+              {isSubcategory ? 'Subcategory view' : 'Live update'}
             </span>
             <span className='text-sm font-medium text-muted-strong'>
               Period: {periodLabel}
@@ -270,15 +309,23 @@ export function AnalyticsPage() {
           categories={categories}
           isError={categorySpend.isError}
           isLoading={categorySpend.isLoading}
-          periodLabel={periodLabel}
+          onCategorySelect={isSubcategory ? undefined : handleCategorySelect}
+          title={
+            isSubcategory ? 'Subcategory allocation' : 'Category allocation'
+          }
           total={total}
+          totalLabel={
+            isSubcategory ? `${selectedCategoryLabel} spend` : 'Total spend'
+          }
         />
 
         <IncomeVsExpensesCard
           data={incomeVsExpenses.data}
+          expenseLabel={isSubcategory ? selectedCategoryLabel : 'Expenses'}
           isError={incomeVsExpenses.isError}
           isLoading={incomeVsExpenses.isLoading}
           periodLabel={periodLabel}
+          scopedExpenseComparison={isSubcategory}
         />
       </div>
 
@@ -287,7 +334,10 @@ export function AnalyticsPage() {
           categories={categories}
           isError={categorySpend.isError}
           isLoading={categorySpend.isLoading}
+          itemLabel={isSubcategory ? 'Subcategory' : 'Category'}
+          onCategorySelect={isSubcategory ? undefined : handleCategorySelect}
           periodLabel={periodLabel}
+          title={isSubcategory ? 'Subcategory breakdown' : 'Category breakdown'}
           total={total}
         />
       </div>
@@ -303,4 +353,18 @@ function buildReportDateRange(
     ...(startDate !== undefined ? { startDate } : {}),
     ...(endDate !== undefined ? { endDate } : {}),
   };
+}
+
+function parseCategoryId(value: string | null): number | undefined {
+  if (value === null) {
+    return undefined;
+  }
+
+  const parsedValue = Number(value);
+
+  if (!Number.isInteger(parsedValue) || parsedValue < 1) {
+    return undefined;
+  }
+
+  return parsedValue;
 }

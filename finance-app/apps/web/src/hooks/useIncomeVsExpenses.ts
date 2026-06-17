@@ -14,6 +14,7 @@ export type {
 
 export function useIncomeVsExpenses(
   range: ReportDateRange = getCurrentMonthRange(),
+  categoryId?: number,
 ) {
   const { selectedAccount } = useAccountFilter();
 
@@ -24,7 +25,8 @@ export function useIncomeVsExpenses(
       range.startDate ?? null,
       range.endDate ?? null,
       selectedAccount,
+      categoryId ?? null,
     ],
-    queryFn: () => fetchIncomeVsExpenses(range, selectedAccount),
+    queryFn: () => fetchIncomeVsExpenses(range, selectedAccount, categoryId),
   });
 }

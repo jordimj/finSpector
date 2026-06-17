@@ -12,6 +12,7 @@ export type {
 
 export function useCategorySpend(
   range: ReportDateRange = getCurrentMonthRange(),
+  categoryId?: number,
 ) {
   const { selectedAccount } = useAccountFilter();
 
@@ -22,7 +23,8 @@ export function useCategorySpend(
       range.startDate ?? null,
       range.endDate ?? null,
       selectedAccount,
+      categoryId ?? null,
     ],
-    queryFn: () => fetchCategorySpend(range, selectedAccount),
+    queryFn: () => fetchCategorySpend(range, selectedAccount, categoryId),
   });
 }

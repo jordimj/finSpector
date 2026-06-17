@@ -5,21 +5,25 @@ import { getCategoryIcon } from './categoryVisuals';
 type CategoryRowProps = {
   category: CategorySpendCategory;
   color: string;
+  onSelect?: (category: CategorySpendCategory) => void;
 };
 
-export function CategoryRow({ category, color }: CategoryRowProps) {
+export function CategoryRow({ category, color, onSelect }: CategoryRowProps) {
   const width =
     category.share > 0 ? `${Math.max(category.share * 100, 3)}%` : '0%';
   const Icon = getCategoryIcon(category.category);
+  const canSelect = onSelect !== undefined && category.id !== null;
   const status =
     category.share >= 0.25
       ? 'Major driver'
       : category.share >= 0.12
         ? 'Steady spend'
         : 'Low impact';
+  const className =
+    'grid w-full gap-4 px-5 py-5 text-left transition hover:bg-panel-raised/30 md:grid-cols-[minmax(0,1.15fr)_minmax(7rem,0.55fr)_minmax(12rem,0.95fr)] md:items-center';
 
-  return (
-    <div className='grid gap-4 px-5 py-5 transition hover:bg-panel-raised/30 md:grid-cols-[minmax(0,1.15fr)_minmax(7rem,0.55fr)_minmax(12rem,0.95fr)] md:items-center'>
+  const content = (
+    <>
       <div className='flex min-w-0 items-center gap-3'>
         <span
           className='flex size-11 shrink-0 items-center justify-center rounded-md border border-line'
@@ -67,6 +71,20 @@ export function CategoryRow({ category, color }: CategoryRowProps) {
           />
         </div>
       </div>
-    </div>
+    </>
   );
+
+  if (canSelect) {
+    return (
+      <button
+        type='button'
+        className={`${className} cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-inset focus-visible:outline-accent-lavender`}
+        onClick={() => onSelect(category)}
+      >
+        {content}
+      </button>
+    );
+  }
+
+  return <div className={className}>{content}</div>;
 }

@@ -1,4 +1,3 @@
-import { Filter } from 'lucide-react';
 import type { CategorySpendCategory } from '../types';
 import { formatCurrency } from '../utils';
 import { CategoryRows } from './CategoryRows';
@@ -7,7 +6,10 @@ type CategoriesCardProps = {
   categories: CategorySpendCategory[];
   isError: boolean;
   isLoading: boolean;
+  itemLabel?: string;
+  onCategorySelect?: (category: CategorySpendCategory) => void;
   periodLabel: string;
+  title?: string;
   total: number;
 };
 
@@ -15,7 +17,10 @@ export function CategoriesCard({
   categories,
   isError,
   isLoading,
+  itemLabel = 'Category',
+  onCategorySelect,
   periodLabel,
+  title = 'Category breakdown',
   total,
 }: CategoriesCardProps) {
   return (
@@ -23,7 +28,7 @@ export function CategoriesCard({
       <div className='flex flex-col gap-3 border-b border-line px-5 py-5 sm:flex-row sm:items-center sm:justify-between'>
         <div>
           <h2 className='text-xl font-semibold tracking-normal text-ink'>
-            Category breakdown
+            {title}
           </h2>
           <p className='mt-1 text-sm font-medium text-muted'>
             {isLoading ? 'Loading totals' : `${formatCurrency(total)} spent`} ·{' '}
@@ -33,7 +38,7 @@ export function CategoriesCard({
       </div>
 
       <div className='hidden grid-cols-[minmax(0,1.15fr)_minmax(7rem,0.55fr)_minmax(12rem,0.95fr)] gap-4 border-b border-line bg-panel-raised/35 px-5 py-3 text-xs font-bold uppercase tracking-[0.12em] text-muted-strong md:grid'>
-        <span>Category</span>
+        <span>{itemLabel}</span>
         <span className='text-right'>Spend</span>
         <span>Share / activity</span>
       </div>
@@ -42,6 +47,7 @@ export function CategoriesCard({
         categories={categories}
         isError={isError}
         isLoading={isLoading}
+        onCategorySelect={onCategorySelect}
         total={total}
       />
     </div>

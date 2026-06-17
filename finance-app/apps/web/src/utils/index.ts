@@ -1,6 +1,7 @@
 import { fetchJson } from '../lib/api';
 import type {
   CategorySpend,
+  CategoryListResponse,
   CategorySpendResponse,
   DateRange,
   ExpenseTransaction,
@@ -65,8 +66,9 @@ export async function fetchLastMonthExpenses(
 export async function fetchCategorySpend(
   range: ReportDateRange,
   account: AccountFilter = null,
+  categoryId?: number,
 ): Promise<CategorySpend> {
-  const queryString = toReportQueryString(range, account);
+  const queryString = toReportQueryString(range, account, categoryId);
 
   const response = await fetchJson<CategorySpendResponse>({
     path: `/api/reports/category-spend${queryString ? `?${queryString}` : ''}`,
@@ -91,11 +93,18 @@ export async function fetchCategorySpend(
   };
 }
 
+export function fetchCategories(): Promise<CategoryListResponse> {
+  return fetchJson<CategoryListResponse>({
+    path: '/api/categories',
+  });
+}
+
 export async function fetchIncomeVsExpenses(
   range: ReportDateRange,
   account: AccountFilter = null,
+  categoryId?: number,
 ): Promise<IncomeVsExpenses> {
-  const queryString = toReportQueryString(range, account);
+  const queryString = toReportQueryString(range, account, categoryId);
 
   const response = await fetchJson<IncomeVsExpensesResponse>({
     path: `/api/reports/income-vs-expenses${queryString ? `?${queryString}` : ''}`,
@@ -331,9 +340,14 @@ export function formatTransactionCurrency(value: number): string {
 function toReportQueryString(
   range: ReportDateRange,
   account: AccountFilter,
+  categoryId?: number,
 ): string {
   const params = new URLSearchParams();
   appendAccountParam(params, account);
+
+  if (categoryId !== undefined) {
+    params.set('categoryId', String(categoryId));
+  }
 
   if (range.startDate !== undefined) {
     params.set('from', range.startDate);

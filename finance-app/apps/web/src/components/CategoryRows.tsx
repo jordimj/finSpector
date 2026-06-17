@@ -7,6 +7,7 @@ type CategoryRowsProps = {
   categories: CategorySpendCategory[];
   isError: boolean;
   isLoading: boolean;
+  onCategorySelect?: (category: CategorySpendCategory) => void;
   total: number;
 };
 
@@ -14,6 +15,7 @@ export function CategoryRows({
   categories,
   isError,
   isLoading,
+  onCategorySelect,
   total,
 }: CategoryRowsProps) {
   if (isLoading) {
@@ -73,6 +75,7 @@ export function CategoryRows({
           key={category.id ?? category.category}
           category={category}
           color={getCategoryColor(index)}
+          onSelect={onCategorySelect}
         />
       ))}
     </div>

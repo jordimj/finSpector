@@ -3,6 +3,7 @@ import { formatCurrency } from '../utils';
 
 type IncomeVsExpensesTooltipProps = {
   active?: boolean;
+  expenseLabel?: string;
   payload?: Array<{
     payload?: IncomeVsExpensesPeriod;
   }>;
@@ -10,6 +11,7 @@ type IncomeVsExpensesTooltipProps = {
 
 export function IncomeVsExpensesTooltip({
   active,
+  expenseLabel = 'Expenses',
   payload,
 }: IncomeVsExpensesTooltipProps) {
   const period = payload?.[0]?.payload;
@@ -29,7 +31,7 @@ export function IncomeVsExpensesTooltip({
           </span>
         </div>
         <div className='flex items-center justify-between gap-6'>
-          <span className='text-accent-lavender'>Expenses</span>
+          <span className='text-accent-lavender'>{expenseLabel}</span>
           <span className='font-semibold tabular-nums text-ink'>
             {formatCurrency(period.expensesAmount)}
           </span>

@@ -1,6 +1,5 @@
 import type {
   ExpenseAccount,
-  Transaction,
   TransactionType,
 } from '@finance/shared';
 
@@ -46,6 +45,19 @@ export type CategorySpendCategory = CategorySpendResponseCategory & {
 export type CategorySpend = ReportDateRange & {
   categories: CategorySpendCategory[];
   total: number;
+};
+
+export type CategoryListResponseCategory = {
+  id: number;
+  name: string;
+  subcategories: Array<{
+    id: number;
+    name: string;
+  }>;
+};
+
+export type CategoryListResponse = {
+  categories: CategoryListResponseCategory[];
 };
 
 export type IncomeVsExpensesGroupBy = 'month' | 'year';
@@ -103,7 +115,7 @@ export type RecentTransaction = {
 };
 
 export type RecentTransactionsResponse = {
-  transactions: Transaction[];
+  transactions: RecentTransaction[];
   limit: number;
   offset: number;
 };
