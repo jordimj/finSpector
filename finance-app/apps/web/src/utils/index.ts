@@ -97,8 +97,17 @@ export function formatPercentage(value: number): string {
   }).format(value);
 }
 
-export function formatDateRange(startDate: string, endDate: string): string {
+type DateFormatOptions = {
+  includeYear?: boolean;
+};
+
+export function formatDateRange(
+  startDate: string,
+  endDate: string,
+  options: DateFormatOptions = {},
+): string {
   const formatter = new Intl.DateTimeFormat(undefined, {
+    ...(options.includeYear ? { year: 'numeric' } : {}),
     month: 'short',
     day: 'numeric',
   });
@@ -108,28 +117,35 @@ export function formatDateRange(startDate: string, endDate: string): string {
   )}`;
 }
 
-export function formatReportDateRange(range: ReportDateRange): string {
+export function formatReportDateRange(
+  range: ReportDateRange,
+  options: DateFormatOptions = {},
+): string {
   if (range.startDate === undefined && range.endDate === undefined) {
     return 'All time';
   }
 
   if (range.startDate !== undefined && range.endDate !== undefined) {
-    return formatDateRange(range.startDate, range.endDate);
+    return formatDateRange(range.startDate, range.endDate, options);
   }
 
   if (range.startDate !== undefined) {
-    return `Since ${formatTransactionDate(range.startDate)}`;
+    return `Since ${formatTransactionDate(range.startDate, options)}`;
   }
 
   if (range.endDate !== undefined) {
-    return `Through ${formatTransactionDate(range.endDate)}`;
+    return `Through ${formatTransactionDate(range.endDate, options)}`;
   }
 
   return 'All time';
 }
 
-export function formatTransactionDate(date: string): string {
+export function formatTransactionDate(
+  date: string,
+  options: DateFormatOptions = {},
+): string {
   return new Intl.DateTimeFormat(undefined, {
+    ...(options.includeYear ? { year: 'numeric' } : {}),
     month: 'short',
     day: 'numeric',
   }).format(parseDateKey(date));

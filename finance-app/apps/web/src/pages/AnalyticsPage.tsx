@@ -12,6 +12,7 @@ import {
 import { useIncomeVsExpenses } from '../hooks/useIncomeVsExpenses';
 import { cn } from '../lib/utils';
 import type { ReportDateRange } from '../types';
+import type { TransactionType } from '@finance/shared';
 import {
   formatReportDateRange,
   getAllTimeRange,
@@ -57,10 +58,17 @@ const dateRangePresets = [
 
 type DateRangePresetKey = (typeof dateRangePresets)[number]['key'];
 
+const categoryAmountTypes = [
+  { key: 'expense', label: 'Expenses' },
+  { key: 'income', label: 'Incomes' },
+] as const;
+
 export function AnalyticsPage() {
   const [dateRange, setDateRange] = useState<ReportDateRange>(() =>
     getCurrentMonthRange(),
   );
+  const [categoryAmountType, setCategoryAmountType] =
+    useState<TransactionType>('expense');
   const [selectedPresetKey, setSelectedPresetKey] =
     useState<DateRangePresetKey | null>('this-month');
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
@@ -68,19 +76,47 @@ export function AnalyticsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const selectedCategoryId = parseCategoryId(searchParams.get('categoryId'));
 
-  const categorySpend = useCategorySpend(dateRange, selectedCategoryId);
+  const categorySpend = useCategorySpend(
+    dateRange,
+    selectedCategoryId,
+    categoryAmountType,
+  );
   const incomeVsExpenses = useIncomeVsExpenses(dateRange, selectedCategoryId);
   const categories = categorySpend.data?.categories ?? [];
   const total = categorySpend.data?.total ?? 0;
-  const periodLabel = formatReportDateRange(dateRange);
+  const periodLabel = formatReportDateRange(dateRange, { includeYear: true });
   const isSubcategory = selectedCategoryId !== undefined;
+  const isIncomeView = categoryAmountType === 'income';
 
   const { data: nestedCategories } = useCategories();
   const selectedCategory = isSubcategory
     ? nestedCategories?.find((category) => category.id === selectedCategoryId)
     : undefined;
   const selectedCategoryLabel = selectedCategory?.name ?? 'Selected category';
-  const pageTitle = isSubcategory ? selectedCategoryLabel : 'Spending insights';
+  const pageTitle = isSubcategory
+    ? selectedCategoryLabel
+    : isIncomeView
+      ? 'Income insights'
+      : 'Spending insights';
+  const amountNoun = isIncomeView ? 'income' : 'spend';
+  const allocationTitle = isSubcategory
+    ? 'Subcategory allocation'
+    : 'Category allocation';
+  const breakdownTitle = isSubcategory
+    ? 'Subcategory breakdown'
+    : 'Category breakdown';
+  const totalLabel = isSubcategory
+    ? `${selectedCategoryLabel} ${amountNoun}`
+    : isIncomeView
+      ? 'Total income'
+      : 'Total spend';
+  const emptyTitle = isIncomeView
+    ? 'No category income yet'
+    : 'No category spend yet';
+  const emptyDescription = isIncomeView
+    ? 'Imported income transactions will show up here.'
+    : 'Imported expenses will show up here.';
+
   const selectedPreset = dateRangePresets.find(
     (preset) => preset.key === selectedPresetKey,
   );
@@ -194,7 +230,11 @@ export function AnalyticsPage() {
           </h1>
           <div className='mt-3 flex flex-wrap items-center gap-3'>
             <span className='inline-flex h-6 items-center rounded-full bg-accent-green/15 px-3 text-xs font-bold uppercase tracking-[0.14em] text-accent-green'>
-              {isSubcategory ? 'Subcategory view' : 'Live update'}
+              {isSubcategory
+                ? 'Subcategory view'
+                : isIncomeView
+                  ? 'Income view'
+                  : 'Live update'}
             </span>
             <span className='text-sm font-medium text-muted-strong'>
               Period: {periodLabel}
@@ -202,122 +242,151 @@ export function AnalyticsPage() {
           </div>
         </div>
 
-        <div ref={datePickerRef} className='relative self-start sm:self-auto'>
-          <button
-            type='button'
-            className='inline-flex h-10 max-w-full items-center gap-2 rounded-md border border-line bg-panel-raised px-3 text-sm font-semibold text-muted-strong shadow-shell transition hover:border-accent-lavender/60 hover:text-ink'
-            aria-controls='analytics-date-range-picker'
-            aria-expanded={isDatePickerOpen}
-            aria-haspopup='dialog'
-            onClick={() => setIsDatePickerOpen((isOpen) => !isOpen)}
+        <div className='flex flex-col gap-3 self-start sm:flex-row sm:items-center sm:self-auto'>
+          <div
+            className='inline-flex h-10 rounded-md border border-line bg-panel-raised p-1 shadow-shell'
+            role='group'
+            aria-label='Category amount type'
           >
-            <CalendarDays className='size-4 shrink-0' aria-hidden='true' />
-            <span className='truncate'>{datePickerLabel}</span>
-            <ChevronDown
-              className={cn(
-                'size-4 shrink-0 transition',
-                isDatePickerOpen && 'rotate-180',
-              )}
-              aria-hidden='true'
-            />
-          </button>
+            {categoryAmountTypes.map((option) => {
+              const isSelected = option.key === categoryAmountType;
 
-          {isDatePickerOpen && (
-            <div
-              id='analytics-date-range-picker'
-              role='dialog'
-              aria-label='Date range'
-              className='absolute left-0 top-12 z-20 w-[calc(100vw-2rem)] max-w-[38rem] rounded-lg border border-line bg-panel p-3 shadow-shell sm:left-auto sm:right-0 sm:w-[38rem]'
+              return (
+                <button
+                  key={option.key}
+                  type='button'
+                  className={cn(
+                    'rounded px-3 text-sm font-semibold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-lavender',
+                    isSelected
+                      ? 'bg-accent-lavender text-white shadow-sm'
+                      : 'text-muted-strong hover:text-ink',
+                  )}
+                  aria-pressed={isSelected}
+                  onClick={() => setCategoryAmountType(option.key)}
+                >
+                  {option.label}
+                </button>
+              );
+            })}
+          </div>
+
+          <div ref={datePickerRef} className='relative'>
+            <button
+              type='button'
+              className='inline-flex h-10 max-w-full items-center gap-2 rounded-md border border-line bg-panel-raised px-3 text-sm font-semibold text-muted-strong shadow-shell transition hover:border-accent-lavender/60 hover:text-ink'
+              aria-controls='analytics-date-range-picker'
+              aria-expanded={isDatePickerOpen}
+              aria-haspopup='dialog'
+              onClick={() => setIsDatePickerOpen((isOpen) => !isOpen)}
             >
-              <div className='grid gap-3 md:grid-cols-[11rem_minmax(0,1fr)]'>
-                <div className='border-b border-line pb-3 md:border-b-0 md:border-r md:pb-0 md:pr-3'>
-                  <p className='mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-muted-strong'>
-                    Presets
-                  </p>
-                  <div className='grid grid-cols-2 gap-1 md:grid-cols-1'>
-                    {dateRangePresets.map((preset) => {
-                      const isSelected = preset.key === selectedPresetKey;
+              <CalendarDays className='size-4 shrink-0' aria-hidden='true' />
+              <span className='truncate'>{datePickerLabel}</span>
+              <ChevronDown
+                className={cn(
+                  'size-4 shrink-0 transition',
+                  isDatePickerOpen && 'rotate-180',
+                )}
+                aria-hidden='true'
+              />
+            </button>
 
-                      return (
-                        <button
-                          key={preset.key}
-                          type='button'
-                          className={cn(
-                            'flex h-9 items-center justify-between gap-2 rounded-md px-3 text-left text-sm font-medium text-muted-strong transition hover:bg-panel-raised hover:text-ink',
-                            isSelected &&
-                              'bg-accent-lavender/12 text-accent-lavender',
-                          )}
-                          aria-pressed={isSelected}
-                          onClick={() => handlePresetClick(preset.key)}
-                        >
-                          <span className='truncate'>{preset.label}</span>
-                          <Check
+            {isDatePickerOpen && (
+              <div
+                id='analytics-date-range-picker'
+                role='dialog'
+                aria-label='Date range'
+                className='absolute left-0 top-12 z-20 w-[calc(100vw-2rem)] max-w-[38rem] rounded-lg border border-line bg-panel p-3 shadow-shell sm:left-auto sm:right-0 sm:w-[38rem]'
+              >
+                <div className='grid gap-3 md:grid-cols-[11rem_minmax(0,1fr)]'>
+                  <div className='border-b border-line pb-3 md:border-b-0 md:border-r md:pb-0 md:pr-3'>
+                    <p className='mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-muted-strong'>
+                      Presets
+                    </p>
+                    <div className='grid grid-cols-2 gap-1 md:grid-cols-1'>
+                      {dateRangePresets.map((preset) => {
+                        const isSelected = preset.key === selectedPresetKey;
+
+                        return (
+                          <button
+                            key={preset.key}
+                            type='button'
                             className={cn(
-                              'size-4 shrink-0 transition',
-                              isSelected ? 'opacity-100' : 'opacity-0',
+                              'flex h-9 items-center justify-between gap-2 rounded-md px-3 text-left text-sm font-medium text-muted-strong transition hover:bg-panel-raised hover:text-ink',
+                              isSelected &&
+                                'bg-accent-lavender/12 text-accent-lavender',
                             )}
-                            aria-hidden='true'
-                          />
-                        </button>
-                      );
-                    })}
+                            aria-pressed={isSelected}
+                            onClick={() => handlePresetClick(preset.key)}
+                          >
+                            <span className='truncate'>{preset.label}</span>
+                            <Check
+                              className={cn(
+                                'size-4 shrink-0 transition',
+                                isSelected ? 'opacity-100' : 'opacity-0',
+                              )}
+                              aria-hidden='true'
+                            />
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
 
-                <div className='min-w-0'>
-                  <p className='mb-3 text-xs font-semibold uppercase tracking-[0.14em] text-muted-strong'>
-                    Custom dates
-                  </p>
-                  <div className='grid gap-3 sm:grid-cols-2'>
-                    <label className='grid gap-2 text-xs font-medium text-muted'>
-                      From
-                      <input
-                        type='date'
-                        value={dateRange.startDate ?? ''}
-                        max={dateRange.endDate}
-                        className='h-10 min-w-0 rounded-md border border-line bg-canvas px-3 text-sm font-medium text-ink outline-none transition [color-scheme:dark] focus:border-accent-lavender'
-                        onChange={(event) =>
-                          handleStartDateChange(event.currentTarget.value)
-                        }
-                      />
-                    </label>
+                  <div className='min-w-0'>
+                    <p className='mb-3 text-xs font-semibold uppercase tracking-[0.14em] text-muted-strong'>
+                      Custom dates
+                    </p>
+                    <div className='grid gap-3 sm:grid-cols-2'>
+                      <label className='grid gap-2 text-xs font-medium text-muted'>
+                        From
+                        <input
+                          type='date'
+                          value={dateRange.startDate ?? ''}
+                          max={dateRange.endDate}
+                          className='h-10 min-w-0 rounded-md border border-line bg-canvas px-3 text-sm font-medium text-ink outline-none transition [color-scheme:dark] focus:border-accent-lavender'
+                          onChange={(event) =>
+                            handleStartDateChange(event.currentTarget.value)
+                          }
+                        />
+                      </label>
 
-                    <label className='grid gap-2 text-xs font-medium text-muted'>
-                      To
-                      <input
-                        type='date'
-                        value={dateRange.endDate ?? ''}
-                        min={dateRange.startDate}
-                        className='h-10 min-w-0 rounded-md border border-line bg-canvas px-3 text-sm font-medium text-ink outline-none transition [color-scheme:dark] focus:border-accent-lavender'
-                        onChange={(event) =>
-                          handleEndDateChange(event.currentTarget.value)
-                        }
-                      />
-                    </label>
+                      <label className='grid gap-2 text-xs font-medium text-muted'>
+                        To
+                        <input
+                          type='date'
+                          value={dateRange.endDate ?? ''}
+                          min={dateRange.startDate}
+                          className='h-10 min-w-0 rounded-md border border-line bg-canvas px-3 text-sm font-medium text-ink outline-none transition [color-scheme:dark] focus:border-accent-lavender'
+                          onChange={(event) =>
+                            handleEndDateChange(event.currentTarget.value)
+                          }
+                        />
+                      </label>
+                    </div>
+                    <p className='mt-3 rounded-md border border-line bg-canvas px-3 py-2 text-xs font-medium text-muted-strong'>
+                      {periodLabel}
+                    </p>
                   </div>
-                  <p className='mt-3 rounded-md border border-line bg-canvas px-3 py-2 text-xs font-medium text-muted-strong'>
-                    {periodLabel}
-                  </p>
                 </div>
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </div>
 
       <div className='grid gap-5 xl:grid-cols-[minmax(320px,0.82fr)_minmax(0,1.18fr)]'>
         <ExpenseBreakdownCard
           categories={categories}
+          emptyDescription={emptyDescription}
+          emptyTitle={emptyTitle}
           isError={categorySpend.isError}
           isLoading={categorySpend.isLoading}
+          metricLabel={isIncomeView ? 'Income' : 'Spent'}
           onCategorySelect={isSubcategory ? undefined : handleCategorySelect}
-          title={
-            isSubcategory ? 'Subcategory allocation' : 'Category allocation'
-          }
+          shareLabel={amountNoun}
+          title={allocationTitle}
           total={total}
-          totalLabel={
-            isSubcategory ? `${selectedCategoryLabel} spend` : 'Total spend'
-          }
+          totalLabel={totalLabel}
         />
 
         <IncomeVsExpensesCard
@@ -325,21 +394,24 @@ export function AnalyticsPage() {
           expenseLabel={isSubcategory ? selectedCategoryLabel : 'Expenses'}
           isError={incomeVsExpenses.isError}
           isLoading={incomeVsExpenses.isLoading}
-          periodLabel={periodLabel}
           scopedExpenseComparison={isSubcategory}
         />
       </div>
 
       <div className='mt-5'>
         <CategoriesCard
+          amountLabel={isIncomeView ? 'Income' : 'Spend'}
           categories={categories}
+          emptyDescription={emptyDescription}
           isError={categorySpend.isError}
           isLoading={categorySpend.isLoading}
           itemLabel={isSubcategory ? 'Subcategory' : 'Category'}
           onCategorySelect={isSubcategory ? undefined : handleCategorySelect}
           periodLabel={periodLabel}
-          title={isSubcategory ? 'Subcategory breakdown' : 'Category breakdown'}
+          title={breakdownTitle}
           total={total}
+          totalVerb={isIncomeView ? 'received' : 'spent'}
+          type={categoryAmountType}
         />
       </div>
     </section>

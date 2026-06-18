@@ -6,11 +6,13 @@ type CategorySpendTooltipProps = {
   payload?: Array<{
     payload?: CategorySpend;
   }>;
+  shareLabel?: string;
 };
 
 export function CategorySpendTooltip({
   active,
   payload,
+  shareLabel = 'spend',
 }: CategorySpendTooltipProps) {
   const category = payload?.[0]?.payload;
 
@@ -27,7 +29,7 @@ export function CategorySpendTooltip({
         {formatCurrency(category.totalAmount)}
       </p>
       <p className='mt-1 text-xs text-muted'>
-        {formatPercentage(category.share)} of spend
+        {formatPercentage(category.share)} of {shareLabel}
       </p>
     </div>
   );

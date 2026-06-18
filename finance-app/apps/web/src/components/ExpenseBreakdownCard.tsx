@@ -6,9 +6,13 @@ import { CategorySpendChart } from './CategorySpendChart';
 
 type ExpenseBreakdownCardProps = {
   categories: CategorySpend[];
+  emptyDescription?: string;
+  emptyTitle?: string;
   isError: boolean;
   isLoading: boolean;
+  metricLabel?: string;
   onCategorySelect?: (category: CategorySpend) => void;
+  shareLabel?: string;
   title?: string;
   total: number;
   totalLabel?: string;
@@ -16,9 +20,13 @@ type ExpenseBreakdownCardProps = {
 
 export function ExpenseBreakdownCard({
   categories,
+  emptyDescription,
+  emptyTitle,
   isError,
   isLoading,
+  metricLabel,
   onCategorySelect,
+  shareLabel,
   title = 'Category allocation',
   total,
   totalLabel = 'Total spend',
@@ -43,9 +51,13 @@ export function ExpenseBreakdownCard({
 
       <CategorySpendChart
         categories={categories}
+        emptyDescription={emptyDescription}
+        emptyTitle={emptyTitle}
         isError={isError}
         isLoading={isLoading}
+        metricLabel={metricLabel}
         onCategorySelect={onCategorySelect}
+        shareLabel={shareLabel}
         total={total}
       />
 

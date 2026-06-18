@@ -1,5 +1,5 @@
 import { pool } from '@finance/db';
-import type { ExpenseAccount } from '@finance/shared';
+import type { ExpenseAccount, TransactionType } from '@finance/shared';
 import type { FastifyInstance } from 'fastify';
 import {
   toTransactionQuery,
@@ -15,7 +15,7 @@ type TransactionRow = {
   category: string;
   subcategory: string | null;
   account: ExpenseAccount | null;
-  type: 'expense' | 'income';
+  type: TransactionType;
 };
 
 export async function registerTransactionRoutes(

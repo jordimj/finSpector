@@ -8,17 +8,25 @@ import { CategorySpendTooltip } from './CategorySpendTooltip';
 
 type CategorySpendChartProps = {
   categories: CategorySpend[];
+  emptyDescription?: string;
+  emptyTitle?: string;
   isError: boolean;
   isLoading: boolean;
+  metricLabel?: string;
   onCategorySelect?: (category: CategorySpend) => void;
+  shareLabel?: string;
   total: number;
 };
 
 export function CategorySpendChart({
   categories,
+  emptyDescription = 'This month has no expense transactions yet.',
+  emptyTitle = 'No category spend yet',
   isError,
   isLoading,
+  metricLabel = 'Spent',
   onCategorySelect,
+  shareLabel = 'spend',
   total,
 }: CategorySpendChartProps) {
   const [chartContainerRef, hasChartSize, chartSize] =
@@ -40,7 +48,7 @@ export function CategorySpendChart({
     return (
       <CategorySpendChartState>
         <p className='text-sm font-medium text-ink'>
-          Unable to load category spend
+          Unable to load category {shareLabel}
         </p>
         <p className='mt-1 text-xs text-muted'>
           Check that the API is running and try again.
@@ -52,10 +60,8 @@ export function CategorySpendChart({
   if (!hasSpend) {
     return (
       <CategorySpendChartState>
-        <p className='text-sm font-medium text-ink'>No category spend yet</p>
-        <p className='mt-1 text-xs text-muted'>
-          This month has no expense transactions yet.
-        </p>
+        <p className='text-sm font-medium text-ink'>{emptyTitle}</p>
+        <p className='mt-1 text-xs text-muted'>{emptyDescription}</p>
       </CategorySpendChartState>
     );
   }
@@ -99,7 +105,9 @@ export function CategorySpendChart({
                 />
               ))}
             </Pie>
-            <Tooltip content={<CategorySpendTooltip />} />
+            <Tooltip
+              content={<CategorySpendTooltip shareLabel={shareLabel} />}
+            />
           </PieChart>
         </ResponsiveContainer>
       ) : null}
@@ -110,7 +118,7 @@ export function CategorySpendChart({
             {formatCompactCurrency(total)}
           </p>
           <p className='mt-2 text-xs font-semibold uppercase tracking-[0.2em] text-muted-strong'>
-            Spent
+            {metricLabel}
           </p>
         </div>
       </div>

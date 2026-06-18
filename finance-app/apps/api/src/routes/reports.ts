@@ -162,46 +162,93 @@ export async function registerReportRoutes(
     '/category-spend',
     {
       schema: {
-        querystring: reportQuerySchema({ includeCategoryId: true }),
+        querystring: reportQuerySchema({
+          includeCategoryId: true,
+          includeTransactionType: true,
+        }),
       },
     },
     async (request) => {
       const query = toReportQuery(request.query);
-      const { expenseFilters, values } = buildReportFilters(query);
+      const { expenseFilters, incomeFilters, values } =
+        buildReportFilters(query);
       const id = query.categoryId;
+      const transactionType = query.type ?? 'expense';
 
       const result =
         id === undefined
-          ? await pool.query<CategorySpendRow>(
-              `
-                select
-                  categories.id as category_id,
-                  categories.name as category,
-                  count(expenses.id)::text as transaction_count,
+          ? transactionType === 'income'
+            ? await pool.query<CategorySpendRow>(
+                `
+                  select
+                    categories.id as category_id,
+                    categories.name as category,
+                    count(income.id)::text as transaction_count,
+                    coalesce(sum(income.amount), 0)::numeric(12, 2)::text as total
+                  from income
+                  join categories on categories.id = income.category_id
+                  ${incomeFilters}
+                  group by categories.id, categories.name
+                  order by coalesce(sum(income.amount), 0) desc;
+                `,
+                values,
+              )
+            : await pool.query<CategorySpendRow>(
+                `
+                  select
+                    categories.id as category_id,
+                    categories.name as category,
+                    count(expenses.id)::text as transaction_count,
+                    coalesce(sum(expenses.amount), 0)::numeric(12, 2)::text as total
+                  from expenses
+                  join categories on categories.id = expenses.category_id
+                  ${expenseFilters}
+                  group by categories.id, categories.name
+                  order by coalesce(sum(expenses.amount), 0) desc;
+                `,
+                values,
+              )
+          : transactionType === 'income'
+            ? await pool.query<CategorySpendRow>(
+                `
+                  select
+                    subcategories.id as category_id,
+                    coalesce(subcategories.name, 'Uncategorized') as category,
+                    count(income.id)::text as transaction_count,
+                  coalesce(sum(income.amount), 0)::numeric(12, 2)::text as total
+                  from income
+                  left join subcategories on subcategories.id = income.subcategory_id
+                  ${appendReportFilter(
+                    incomeFilters,
+                    values,
+                    'income.category_id',
+                    id,
+                  )}
+                  group by subcategories.id, coalesce(subcategories.name, 'Uncategorized')
+                  order by coalesce(sum(income.amount), 0) desc;
+                `,
+                values,
+              )
+            : await pool.query<CategorySpendRow>(
+                `
+                  select
+                    subcategories.id as category_id,
+                    coalesce(subcategories.name, 'Uncategorized') as category,
+                    count(expenses.id)::text as transaction_count,
                   coalesce(sum(expenses.amount), 0)::numeric(12, 2)::text as total
-                from expenses
-                join categories on categories.id = expenses.category_id
-                ${expenseFilters}
-                group by categories.id, categories.name
-                order by coalesce(sum(expenses.amount), 0) desc;
-              `,
-              values,
-            )
-          : await pool.query<CategorySpendRow>(
-              `
-                select
-                  subcategories.id as category_id,
-                  coalesce(subcategories.name, 'Uncategorized') as category,
-                  count(expenses.id)::text as transaction_count,
-                  coalesce(sum(expenses.amount), 0)::numeric(12, 2)::text as total
-                from expenses
-                left join subcategories on subcategories.id = expenses.subcategory_id
-                ${appendExpenseFilter(expenseFilters, values, 'expenses.category_id', id)}
-                group by subcategories.id, coalesce(subcategories.name, 'Uncategorized')
-                order by coalesce(sum(expenses.amount), 0) desc;
-              `,
-              values,
-            );
+                  from expenses
+                  left join subcategories on subcategories.id = expenses.subcategory_id
+                  ${appendReportFilter(
+                    expenseFilters,
+                    values,
+                    'expenses.category_id',
+                    id,
+                  )}
+                  group by subcategories.id, coalesce(subcategories.name, 'Uncategorized')
+                  order by coalesce(sum(expenses.amount), 0) desc;
+                `,
+                values,
+              );
 
       return result.rows.map((row) => ({
         id: row.category_id,
@@ -241,7 +288,7 @@ function toIncomeVsExpensesAmounts(
   };
 }
 
-function appendExpenseFilter(
+function appendReportFilter(
   existingFilter: string,
   values: Array<string | number>,
   column: string,

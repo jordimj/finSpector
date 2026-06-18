@@ -3,6 +3,7 @@ import { fetchJson } from '../lib/api';
 import type { ReportDateRange } from '../types';
 import { getCurrentMonthRange, toReportQueryString } from '../utils';
 import { useAccountFilter } from './useAccountFilter';
+import { TransactionType } from '@finance/shared';
 
 type Category = {
   id: number | null;
@@ -19,6 +20,7 @@ export type CategorySpend = Category & {
 export function useCategorySpend(
   range: ReportDateRange = getCurrentMonthRange(),
   categoryId?: number,
+  type: TransactionType = 'expense',
 ) {
   const { selectedAccount } = useAccountFilter();
 
@@ -30,13 +32,14 @@ export function useCategorySpend(
       range.endDate,
       selectedAccount,
       categoryId,
+      type,
     ],
     queryFn: async () => {
-      const queryString = toReportQueryString(
-        range,
-        selectedAccount,
-        categoryId,
+      const params = new URLSearchParams(
+        toReportQueryString(range, selectedAccount, categoryId),
       );
+      params.set('type', type);
+      const queryString = params.toString();
 
       const categories = await fetchJson<Category[]>({
         path: `/api/reports/category-spend${queryString ? `?${queryString}` : ''}`,

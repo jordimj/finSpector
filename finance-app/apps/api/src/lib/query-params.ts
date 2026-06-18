@@ -1,6 +1,10 @@
-import { EXPENSE_ACCOUNTS, type ExpenseAccount } from '@finance/shared';
+import {
+  EXPENSE_ACCOUNTS,
+  type TransactionType,
+  type ExpenseAccount,
+} from '@finance/shared';
 
-export type TransactionTypeFilter = 'all' | 'expense' | 'income';
+export type TransactionTypeFilter = 'all' | TransactionType;
 
 export type TransactionQuery = {
   type?: TransactionTypeFilter;
@@ -18,6 +22,7 @@ export type ReportQuery = {
   from?: string;
   to?: string;
   limit?: number;
+  type?: TransactionType;
 };
 
 const isoDatePattern = /^\d{4}-\d{2}-\d{2}$/;
@@ -42,6 +47,7 @@ export function reportQuerySchema(
   options: {
     includeCategoryId?: boolean;
     includeLimit?: boolean;
+    includeTransactionType?: boolean;
   } = {},
 ): object {
   return {
@@ -54,6 +60,9 @@ export function reportQuerySchema(
         : {}),
       from: { type: 'string', pattern: isoDatePattern.source },
       to: { type: 'string', pattern: isoDatePattern.source },
+      ...(options.includeTransactionType
+        ? { type: { type: 'string', enum: ['expense', 'income'] } }
+        : {}),
       ...(options.includeLimit
         ? { limit: { type: 'integer', minimum: 1, maximum: 100, default: 10 } }
         : {}),

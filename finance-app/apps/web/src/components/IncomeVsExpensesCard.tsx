@@ -8,7 +8,6 @@ type IncomeVsExpensesCardProps = {
   expenseLabel?: string;
   isError: boolean;
   isLoading: boolean;
-  periodLabel: string;
   scopedExpenseComparison?: boolean;
 };
 
@@ -17,7 +16,6 @@ export function IncomeVsExpensesCard({
   expenseLabel = 'Expenses',
   isError,
   isLoading,
-  periodLabel,
   scopedExpenseComparison = false,
 }: IncomeVsExpensesCardProps) {
   const incomeTotal = Number(data?.totals.income ?? 0);
@@ -29,11 +27,9 @@ export function IncomeVsExpensesCard({
     incomeTotal > 0 ? expensesTotal / incomeTotal : undefined;
   const NetIcon = hasSurplus ? TrendingUp : TrendingDown;
   const title = scopedExpenseComparison
-    ? `Income vs ${expenseLabel}`
+    ? `Income vs ${expenseLabel.toLocaleLowerCase()}`
     : 'Income vs expenses';
-  const subtitle = scopedExpenseComparison
-    ? `${expenseLabel} spend for ${periodLabel}`
-    : `Trend analysis for ${periodLabel}`;
+
   const summaryMetricLabel = scopedExpenseComparison
     ? 'Income share'
     : 'Savings rate';
@@ -49,7 +45,7 @@ export function IncomeVsExpensesCard({
             {title}
           </h2>
           <span className='mt-1 block text-sm font-medium text-muted'>
-            {subtitle}
+            Trend analysis
           </span>
         </div>
 

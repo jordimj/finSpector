@@ -1,3 +1,4 @@
+import type { TransactionType } from '@finance/shared';
 import type { CategorySpend } from '../hooks/useCategorySpend';
 import { formatCurrency, formatPercentage } from '../utils';
 import { getCategoryIcon } from './categoryVisuals';
@@ -6,21 +7,31 @@ type CategoryRowProps = {
   category: CategorySpend;
   color: string;
   onSelect?: (category: CategorySpend) => void;
+  type?: TransactionType;
 };
 
-export function CategoryRow({ category, color, onSelect }: CategoryRowProps) {
-  console.log({ category });
-
+export function CategoryRow({
+  category,
+  color,
+  onSelect,
+  type = 'expense',
+}: CategoryRowProps) {
   const width =
     category.share > 0 ? `${Math.max(category.share * 100, 3)}%` : '0%';
   const Icon = getCategoryIcon(category.category);
   const canSelect = onSelect !== undefined && category.id !== null;
   const status =
-    category.share >= 0.25
-      ? 'Major driver'
-      : category.share >= 0.12
-        ? 'Steady spend'
-        : 'Low impact';
+    type === 'income'
+      ? category.share >= 0.25
+        ? 'Major source'
+        : category.share >= 0.12
+          ? 'Steady income'
+          : 'Small source'
+      : category.share >= 0.25
+        ? 'Major driver'
+        : category.share >= 0.12
+          ? 'Steady spend'
+          : 'Low impact';
   const className =
     'grid w-full gap-4 px-5 py-5 text-left transition hover:bg-panel-raised/30 md:grid-cols-[minmax(0,1.15fr)_minmax(7rem,0.55fr)_minmax(12rem,0.95fr)] md:items-center';
 

@@ -2,21 +2,26 @@ import type { CategorySpend } from '../hooks/useCategorySpend';
 import { getCategoryColor } from './categoryVisuals';
 import { CategoryRow } from './CategoryRow';
 import { CategoryState } from './CategoryState';
+import type { TransactionType } from '@finance/shared';
 
 type CategoryRowsProps = {
   categories: CategorySpend[];
+  emptyDescription?: string;
   isError: boolean;
   isLoading: boolean;
   onCategorySelect?: (category: CategorySpend) => void;
   total: number;
+  type?: TransactionType;
 };
 
 export function CategoryRows({
   categories,
+  emptyDescription = 'Imported expenses will show up here.',
   isError,
   isLoading,
   onCategorySelect,
   total,
+  type = 'expense',
 }: CategoryRowsProps) {
   if (isLoading) {
     return (
@@ -61,9 +66,7 @@ export function CategoryRows({
     return (
       <CategoryState>
         <p className='text-sm font-medium text-ink'>No categories yet</p>
-        <p className='mt-1 text-xs text-muted'>
-          Imported expenses will show up here.
-        </p>
+        <p className='mt-1 text-xs text-muted'>{emptyDescription}</p>
       </CategoryState>
     );
   }
@@ -76,6 +79,7 @@ export function CategoryRows({
           category={category}
           color={getCategoryColor(index)}
           onSelect={onCategorySelect}
+          type={type}
         />
       ))}
     </div>
