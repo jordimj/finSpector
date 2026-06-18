@@ -4,6 +4,7 @@ import {
   ChevronDown,
   CircleDollarSign,
   LayoutDashboard,
+  ReceiptText,
   Search,
 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
@@ -26,6 +27,11 @@ const navigation = [
     to: '/analytics',
     label: 'Analytics',
     icon: BarChart3,
+  },
+  {
+    to: '/transactions',
+    label: 'Transactions',
+    icon: ReceiptText,
   },
 ] as const;
 
@@ -110,8 +116,8 @@ export function AppShell({ children }: AppShellProps) {
 
   return (
     <AccountFilterContext.Provider value={accountFilterContext}>
-      <div className="min-h-screen bg-canvas text-ink">
-        <div className="mx-auto flex min-h-screen w-full max-w-[1440px]">
+      <div className="h-screen overflow-hidden bg-canvas text-ink">
+        <div className="mx-auto flex h-full w-full max-w-[1440px]">
           <aside className="hidden w-64 shrink-0 border-r border-line bg-panel px-4 py-5 lg:block">
             <div className="mb-8 flex items-center gap-3 px-2">
               <div className="flex size-9 items-center justify-center rounded-lg border border-line bg-panel-raised text-accent-green">
@@ -143,8 +149,8 @@ export function AppShell({ children }: AppShellProps) {
             </nav>
           </aside>
 
-          <div className="flex min-w-0 flex-1 flex-col">
-            <header className="sticky top-0 z-10 border-b border-line bg-canvas/95 px-4 py-3 backdrop-blur md:px-6">
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+            <header className="sticky top-0 z-10 shrink-0 border-b border-line bg-canvas/95 px-4 py-3 backdrop-blur md:px-6">
               <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2 lg:hidden">
                   <div className="flex size-9 items-center justify-center rounded-lg border border-line bg-panel-raised text-accent-green">
@@ -246,7 +252,7 @@ export function AppShell({ children }: AppShellProps) {
               </nav>
             </header>
 
-            <main className="flex-1 px-4 py-6 md:px-6 lg:px-8">
+            <main className="min-h-0 flex-1 overflow-y-auto px-4 py-6 md:px-6 lg:px-8">
               {children}
             </main>
           </div>
