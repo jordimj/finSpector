@@ -6,7 +6,11 @@ import type { TransactionType } from '@finance/shared';
 
 type CategoryRowsProps = {
   categories: CategorySpend[];
+  comparisonCategories?: CategorySpend[];
+  comparisonLabel?: string;
   emptyDescription?: string;
+  isComparisonError?: boolean;
+  isComparisonLoading?: boolean;
   isError: boolean;
   isLoading: boolean;
   onCategorySelect?: (category: CategorySpend) => void;
@@ -16,13 +20,29 @@ type CategoryRowsProps = {
 
 export function CategoryRows({
   categories,
+  comparisonCategories,
+  comparisonLabel,
   emptyDescription = 'Imported expenses will show up here.',
+  isComparisonError = false,
+  isComparisonLoading = false,
   isError,
   isLoading,
   onCategorySelect,
   total,
   type = 'expense',
 }: CategoryRowsProps) {
+  const showComparison = comparisonLabel !== undefined;
+  const categoryRows = buildCategoryRows({
+    categories,
+    comparisonCategories,
+    includeComparisonOnly:
+      showComparison && !isComparisonLoading && !isComparisonError,
+  });
+  const hasRows = categoryRows.some(
+    ({ category, comparisonCategory }) =>
+      category.totalAmount > 0 || (comparisonCategory?.totalAmount ?? 0) > 0,
+  );
+
   if (isLoading) {
     return (
       <div className='divide-y divide-line'>
@@ -62,7 +82,7 @@ export function CategoryRows({
     );
   }
 
-  if (categories.length === 0 || total <= 0) {
+  if (!hasRows || (total <= 0 && !showComparison)) {
     return (
       <CategoryState>
         <p className='text-sm font-medium text-ink'>No categories yet</p>
@@ -73,15 +93,85 @@ export function CategoryRows({
 
   return (
     <div className='divide-y divide-line'>
-      {categories.map((category, index) => (
+      {categoryRows.map(({ category, comparisonCategory }, index) => (
         <CategoryRow
           key={category.id ?? category.category}
           category={category}
+          comparisonCategory={comparisonCategory}
+          comparisonLabel={comparisonLabel}
           color={getCategoryColor(index)}
+          isComparisonError={isComparisonError}
+          isComparisonLoading={isComparisonLoading}
           onSelect={onCategorySelect}
           type={type}
         />
       ))}
     </div>
   );
+}
+
+type CategoryRowComparison = {
+  category: CategorySpend;
+  comparisonCategory?: CategorySpend;
+};
+
+function buildCategoryRows({
+  categories,
+  comparisonCategories,
+  includeComparisonOnly,
+}: {
+  categories: CategorySpend[];
+  comparisonCategories: CategorySpend[] | undefined;
+  includeComparisonOnly: boolean;
+}): CategoryRowComparison[] {
+  const comparisonByKey = new Map(
+    comparisonCategories?.map((category) => [
+      getCategoryComparisonKey(category),
+      category,
+    ]) ?? [],
+  );
+  const categoryKeys = new Set<string>();
+  const rows = categories.map((category) => {
+    const key = getCategoryComparisonKey(category);
+    categoryKeys.add(key);
+
+    return {
+      category,
+      comparisonCategory: comparisonByKey.get(key),
+    };
+  });
+
+  if (!includeComparisonOnly || comparisonCategories === undefined) {
+    return rows;
+  }
+
+  return [
+    ...rows,
+    ...comparisonCategories.flatMap((comparisonCategory) => {
+      const key = getCategoryComparisonKey(comparisonCategory);
+
+      if (categoryKeys.has(key)) {
+        return [];
+      }
+
+      return [
+        {
+          category: {
+            ...comparisonCategory,
+            share: 0,
+            total: '0.00',
+            totalAmount: 0,
+            transactionCount: 0,
+          },
+          comparisonCategory,
+        },
+      ];
+    }),
+  ];
+}
+
+function getCategoryComparisonKey(category: CategorySpend): string {
+  return category.id === null
+    ? `name:${category.category.toLocaleLowerCase()}`
+    : `id:${category.id}`;
 }

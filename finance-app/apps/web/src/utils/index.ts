@@ -20,8 +20,26 @@ export function getCurrentMonthRange(now = new Date()): DateRange {
   };
 }
 
+export function getLastThirtyDaysRange(now = new Date()): DateRange {
+  const start = subtractDays(now, 30);
+
+  return {
+    startDate: formatDateKey(start),
+    endDate: formatDateKey(now),
+  };
+}
+
 export function getLastSixMonthsRange(now = new Date()): DateRange {
-  const start = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+  const start = subtractMonths(now, 6);
+
+  return {
+    startDate: formatDateKey(start),
+    endDate: formatDateKey(now),
+  };
+}
+
+export function getLastTwelveMonthsRange(now = new Date()): DateRange {
+  const start = subtractMonths(now, 12);
 
   return {
     startDate: formatDateKey(start),
@@ -50,6 +68,23 @@ export function getLastYearRange(now = new Date()): DateRange {
 
 export function getAllTimeRange(): ReportDateRange {
   return {};
+}
+
+function subtractDays(date: Date, dayCount: number): Date {
+  return new Date(
+    date.getFullYear(),
+    date.getMonth(),
+    date.getDate() - dayCount,
+  );
+}
+
+function subtractMonths(date: Date, monthCount: number): Date {
+  const targetYear = date.getFullYear();
+  const targetMonth = date.getMonth() - monthCount;
+  const targetMonthLastDay = new Date(targetYear, targetMonth + 1, 0).getDate();
+  const targetDay = Math.min(date.getDate(), targetMonthLastDay);
+
+  return new Date(targetYear, targetMonth, targetDay);
 }
 
 export function parseDateKey(value: string): Date {
@@ -81,6 +116,15 @@ export function formatCurrency(value: number): string {
   }).format(value);
 }
 
+export function formatSignedCurrency(value: number): string {
+  return new Intl.NumberFormat(undefined, {
+    style: 'currency',
+    currency: 'EUR',
+    maximumFractionDigits: 0,
+    signDisplay: 'always',
+  }).format(value);
+}
+
 export function formatCompactCurrency(value: number): string {
   return new Intl.NumberFormat(undefined, {
     style: 'currency',
@@ -95,6 +139,22 @@ export function formatPercentage(value: number): string {
     style: 'percent',
     maximumFractionDigits: 0,
   }).format(value);
+}
+
+export function formatSignedPercentage(value: number): string {
+  return new Intl.NumberFormat(undefined, {
+    style: 'percent',
+    maximumFractionDigits: 0,
+    signDisplay: 'always',
+  }).format(value);
+}
+
+export function formatRelativeChange(current: number, previous: number): string {
+  if (previous === 0) {
+    return current === 0 ? 'No change' : 'New';
+  }
+
+  return formatSignedPercentage((current - previous) / previous);
 }
 
 type DateFormatOptions = {

@@ -8,26 +8,48 @@ import {
   YAxis,
 } from 'recharts';
 import { useHasElementSize } from '../hooks/useHasElementSize';
-import type { IncomeVsExpensesPeriod } from '../hooks/useIncomeVsExpenses';
-import { formatCompactCurrency } from '../utils';
+import type {
+  IncomeVsExpenses,
+  IncomeVsExpensesPeriod,
+} from '../hooks/useIncomeVsExpenses';
+import { formatCompactCurrency, formatDateKey, parseDateKey } from '../utils';
 import { IncomeVsExpensesChartState } from './IncomeVsExpensesChartState';
 import { IncomeVsExpensesTooltip } from './IncomeVsExpensesTooltip';
 
 type IncomeVsExpensesChartProps = {
-  data: IncomeVsExpensesPeriod[];
+  comparisonData?: IncomeVsExpenses;
+  data?: IncomeVsExpenses;
   expenseLabel?: string;
   isError: boolean;
   isLoading: boolean;
 };
 
+export type IncomeVsExpensesChartPeriod = IncomeVsExpensesPeriod & {
+  comparisonExpensesAmount?: number;
+  comparisonIncomeAmount?: number;
+  comparisonNetAmount?: number;
+  comparisonPeriodLabel?: string;
+};
+
 export function IncomeVsExpensesChart({
+  comparisonData,
   data,
   expenseLabel = 'Expenses',
   isError,
   isLoading,
 }: IncomeVsExpensesChartProps) {
-  const hasCashflow = data.some(
-    (period) => period.incomeAmount > 0 || period.expensesAmount > 0,
+  const chartData = buildChartData(data, comparisonData);
+  const hasCashflow = chartData.some(
+    (period) =>
+      period.incomeAmount > 0 ||
+      period.expensesAmount > 0 ||
+      (period.comparisonIncomeAmount ?? 0) > 0 ||
+      (period.comparisonExpensesAmount ?? 0) > 0,
+  );
+  const hasComparison = chartData.some(
+    (period) =>
+      period.comparisonIncomeAmount !== undefined ||
+      period.comparisonExpensesAmount !== undefined,
   );
   const [chartContainerRef, hasChartSize, chartSize] =
     useHasElementSize<HTMLDivElement>();
@@ -93,9 +115,10 @@ export function IncomeVsExpensesChart({
           initialDimension={chartSize}
         >
           <BarChart
-            data={data}
-            barCategoryGap='30%'
-            barGap={8}
+            key={hasComparison ? 'with-comparison' : 'without-comparison'}
+            data={chartData}
+            barCategoryGap={hasComparison ? '18%' : '30%'}
+            barGap={hasComparison ? 3 : 8}
             margin={{ top: 18, right: 18, bottom: 2, left: 0 }}
           >
             <CartesianGrid
@@ -123,18 +146,38 @@ export function IncomeVsExpensesChart({
               cursor={{ fill: 'rgb(184 190 253 / 0.08)' }}
               content={<IncomeVsExpensesTooltip expenseLabel={expenseLabel} />}
             />
+            {hasComparison ? (
+              <Bar
+                dataKey='comparisonIncomeAmount'
+                name='Previous income'
+                fill='#4ade80'
+                fillOpacity={0.24}
+                maxBarSize={14}
+                radius={[4, 4, 0, 0]}
+              />
+            ) : null}
             <Bar
               dataKey='incomeAmount'
               name='Income'
               fill='#4ade80'
-              maxBarSize={24}
+              maxBarSize={hasComparison ? 18 : 24}
               radius={[4, 4, 0, 0]}
             />
+            {hasComparison ? (
+              <Bar
+                dataKey='comparisonExpensesAmount'
+                name={`Previous ${expenseLabel.toLocaleLowerCase()}`}
+                fill='#b8befd'
+                fillOpacity={0.26}
+                maxBarSize={14}
+                radius={[4, 4, 0, 0]}
+              />
+            ) : null}
             <Bar
               dataKey='expensesAmount'
               name={expenseLabel}
               fill='#b8befd'
-              maxBarSize={24}
+              maxBarSize={hasComparison ? 18 : 24}
               radius={[4, 4, 0, 0]}
             />
           </BarChart>
@@ -142,4 +185,109 @@ export function IncomeVsExpensesChart({
       ) : null}
     </div>
   );
+}
+
+function buildChartData(
+  data: IncomeVsExpenses | undefined,
+  comparisonData: IncomeVsExpenses | undefined,
+): IncomeVsExpensesChartPeriod[] {
+  const periods = toCompletePeriods(data);
+  const comparisonPeriods = toCompletePeriods(comparisonData);
+
+  return periods.map((period, index) => {
+    const comparisonPeriod = comparisonPeriods[index];
+
+    if (comparisonPeriod === undefined) {
+      return period;
+    }
+
+    return {
+      ...period,
+      comparisonExpensesAmount: comparisonPeriod.expensesAmount,
+      comparisonIncomeAmount: comparisonPeriod.incomeAmount,
+      comparisonNetAmount: comparisonPeriod.netAmount,
+      comparisonPeriodLabel: comparisonPeriod.label,
+    };
+  });
+}
+
+function toCompletePeriods(
+  report: IncomeVsExpenses | undefined,
+): IncomeVsExpensesPeriod[] {
+  if (report === undefined) {
+    return [];
+  }
+
+  if (
+    report.groupBy !== 'month' ||
+    report.startDate === undefined ||
+    report.endDate === undefined
+  ) {
+    return report.periods;
+  }
+
+  const periodsByKey = new Map(
+    report.periods.map((period) => [period.period, period]),
+  );
+
+  return getMonthPeriodKeys(report.startDate, report.endDate).map(
+    (periodKey) =>
+      periodsByKey.get(periodKey) ?? buildEmptyPeriod(periodKey, report.groupBy),
+  );
+}
+
+function getMonthPeriodKeys(startDate: string, endDate: string): string[] {
+  const start = parseDateKey(startDate);
+  const end = parseDateKey(endDate);
+  const periodKeys: string[] = [];
+  let year = start.getFullYear();
+  let month = start.getMonth();
+  const endYear = end.getFullYear();
+  const endMonth = end.getMonth();
+
+  while (year < endYear || (year === endYear && month <= endMonth)) {
+    periodKeys.push(formatDateKey(new Date(year, month, 1)).slice(0, 7));
+    month += 1;
+
+    if (month > 11) {
+      month = 0;
+      year += 1;
+    }
+  }
+
+  return periodKeys;
+}
+
+function buildEmptyPeriod(
+  period: string,
+  groupBy: IncomeVsExpenses['groupBy'],
+): IncomeVsExpensesPeriod {
+  return {
+    expenses: '0.00',
+    expensesAmount: 0,
+    income: '0.00',
+    incomeAmount: 0,
+    label: formatChartPeriod(period, groupBy),
+    net: '0.00',
+    netAmount: 0,
+    period,
+  };
+}
+
+function formatChartPeriod(
+  period: string,
+  groupBy: IncomeVsExpenses['groupBy'],
+) {
+  if (groupBy === 'year') {
+    return period;
+  }
+
+  const [yearText, monthText] = period.split('-');
+  const year = Number(yearText ?? 0);
+  const month = Number(monthText ?? 1);
+
+  return new Intl.DateTimeFormat(undefined, {
+    month: 'short',
+    year: 'numeric',
+  }).format(new Date(year, month - 1, 1));
 }

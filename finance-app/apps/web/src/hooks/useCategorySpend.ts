@@ -21,6 +21,7 @@ export function useCategorySpend(
   range: ReportDateRange = getCurrentMonthRange(),
   categoryId?: number,
   type: TransactionType = 'expense',
+  enabled: boolean = true,
 ) {
   const { selectedAccount } = useAccountFilter();
 
@@ -34,6 +35,7 @@ export function useCategorySpend(
       categoryId,
       type,
     ],
+    enabled,
     queryFn: async () => {
       const params = new URLSearchParams(
         toReportQueryString(range, selectedAccount, categoryId),

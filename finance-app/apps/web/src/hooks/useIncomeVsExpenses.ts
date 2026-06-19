@@ -38,6 +38,7 @@ export type IncomeVsExpenses = ReportDateRange & {
 export function useIncomeVsExpenses(
   range: ReportDateRange = getCurrentMonthRange(),
   categoryId?: number,
+  enabled: boolean = true,
 ) {
   const { selectedAccount } = useAccountFilter();
 
@@ -50,6 +51,7 @@ export function useIncomeVsExpenses(
       selectedAccount,
       categoryId ?? null,
     ],
+    enabled,
     queryFn: async () => {
       const queryString = toReportQueryString(
         range,

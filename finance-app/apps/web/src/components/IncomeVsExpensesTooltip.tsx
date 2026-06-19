@@ -1,11 +1,11 @@
-import type { IncomeVsExpensesPeriod } from '../hooks/useIncomeVsExpenses';
-import { formatCurrency } from '../utils';
+import { formatCurrency, formatSignedCurrency } from '../utils';
+import type { IncomeVsExpensesChartPeriod } from './IncomeVsExpensesChart';
 
 type IncomeVsExpensesTooltipProps = {
   active?: boolean;
   expenseLabel?: string;
   payload?: Array<{
-    payload?: IncomeVsExpensesPeriod;
+    payload?: IncomeVsExpensesChartPeriod;
   }>;
 };
 
@@ -19,6 +19,12 @@ export function IncomeVsExpensesTooltip({
   if (!active || period === undefined) {
     return null;
   }
+
+  const hasComparison =
+    period.comparisonPeriodLabel !== undefined &&
+    period.comparisonIncomeAmount !== undefined &&
+    period.comparisonExpensesAmount !== undefined &&
+    period.comparisonNetAmount !== undefined;
 
   return (
     <div className='rounded-md border border-line bg-panel-raised px-3 py-2 shadow-shell'>
@@ -43,6 +49,52 @@ export function IncomeVsExpensesTooltip({
           </span>
         </div>
       </div>
+      {hasComparison ? (
+        <div className='mt-2 border-t border-line pt-2 text-xs'>
+          <p className='font-semibold text-muted'>
+            Compared with {period.comparisonPeriodLabel}
+          </p>
+          <div className='mt-2 grid gap-1'>
+            <ComparisonRow
+              current={period.incomeAmount}
+              label='Income'
+              previous={period.comparisonIncomeAmount ?? 0}
+            />
+            <ComparisonRow
+              current={period.expensesAmount}
+              label={expenseLabel}
+              previous={period.comparisonExpensesAmount ?? 0}
+            />
+            <ComparisonRow
+              current={period.netAmount}
+              label='Net'
+              previous={period.comparisonNetAmount ?? 0}
+            />
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function ComparisonRow({
+  current,
+  label,
+  previous,
+}: {
+  current: number;
+  label: string;
+  previous: number;
+}) {
+  return (
+    <div className='flex items-center justify-between gap-6'>
+      <span className='text-muted'>{label}</span>
+      <span className='font-semibold tabular-nums text-muted-strong'>
+        {formatCurrency(previous)}
+        <span className='ml-2 text-ink'>
+          {formatSignedCurrency(current - previous)}
+        </span>
+      </span>
     </div>
   );
 }

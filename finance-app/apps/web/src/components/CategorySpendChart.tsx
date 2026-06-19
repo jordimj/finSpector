@@ -1,15 +1,21 @@
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
+import type { TransactionType } from '@finance/shared';
 import { useHasElementSize } from '../hooks/useHasElementSize';
 import type { CategorySpend } from '../hooks/useCategorySpend';
-import { formatCompactCurrency } from '../utils';
+import { formatCompactCurrency, formatRelativeChange } from '../utils';
 import { getCategoryColor } from './categoryVisuals';
 import { CategorySpendChartState } from './CategorySpendChartState';
 import { CategorySpendTooltip } from './CategorySpendTooltip';
 
 type CategorySpendChartProps = {
   categories: CategorySpend[];
+  comparisonLabel?: string;
+  comparisonTotal?: number;
+  comparisonType?: TransactionType;
   emptyDescription?: string;
   emptyTitle?: string;
+  isComparisonError?: boolean;
+  isComparisonLoading?: boolean;
   isError: boolean;
   isLoading: boolean;
   metricLabel?: string;
@@ -20,8 +26,13 @@ type CategorySpendChartProps = {
 
 export function CategorySpendChart({
   categories,
+  comparisonLabel,
+  comparisonTotal,
+  comparisonType = 'expense',
   emptyDescription = 'This month has no expense transactions yet.',
   emptyTitle = 'No category spend yet',
+  isComparisonError = false,
+  isComparisonLoading = false,
   isError,
   isLoading,
   metricLabel = 'Spent',
@@ -120,8 +131,73 @@ export function CategorySpendChart({
           <p className='mt-2 text-xs font-semibold uppercase tracking-[0.2em] text-muted-strong'>
             {metricLabel}
           </p>
+          {comparisonLabel !== undefined ? (
+            <p
+              className={cnComparisonClass({
+                current: total,
+                isError: isComparisonError,
+                isLoading: isComparisonLoading,
+                previous: comparisonTotal,
+                type: comparisonType,
+              })}
+            >
+              {formatCenterComparison({
+                current: total,
+                isError: isComparisonError,
+                isLoading: isComparisonLoading,
+                previous: comparisonTotal,
+              })}
+            </p>
+          ) : null}
         </div>
       </div>
     </div>
   );
+}
+
+function formatCenterComparison({
+  current,
+  isError,
+  isLoading,
+  previous,
+}: {
+  current: number;
+  isError: boolean;
+  isLoading: boolean;
+  previous: number | undefined;
+}): string {
+  if (isLoading) {
+    return 'Loading comparison';
+  }
+
+  if (isError || previous === undefined) {
+    return 'Comparison unavailable';
+  }
+
+  return formatRelativeChange(current, previous);
+}
+
+function cnComparisonClass({
+  current,
+  isError,
+  isLoading,
+  previous,
+  type,
+}: {
+  current: number;
+  isError: boolean;
+  isLoading: boolean;
+  previous: number | undefined;
+  type: TransactionType;
+}): string {
+  const baseClass = 'mt-2 text-xs font-bold tabular-nums';
+
+  if (isLoading || isError || previous === undefined || current === previous) {
+    return `${baseClass} text-muted`;
+  }
+
+  const delta = current - previous;
+  const isPositive = type === 'income' ? delta > 0 : delta < 0;
+
+  return `${baseClass} ${isPositive ? 'text-accent-green' : 'text-accent-rose'}`;
 }

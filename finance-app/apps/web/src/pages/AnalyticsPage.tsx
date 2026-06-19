@@ -14,13 +14,17 @@ import { cn } from '../lib/utils';
 import type { ReportDateRange } from '../types';
 import type { TransactionType } from '@finance/shared';
 import {
+  formatDateKey,
   formatReportDateRange,
   getAllTimeRange,
   getCurrentMonthRange,
   getCurrentYearRange,
   getLastMonthRange,
   getLastSixMonthsRange,
+  getLastThirtyDaysRange,
+  getLastTwelveMonthsRange,
   getLastYearRange,
+  parseDateKey,
 } from '../utils';
 
 const dateRangePresets = [
@@ -35,9 +39,19 @@ const dateRangePresets = [
     getRange: () => getLastMonthRange(),
   },
   {
+    key: 'last-30-days',
+    label: 'Last 30 days',
+    getRange: () => getLastThirtyDaysRange(),
+  },
+  {
     key: 'last-6-months',
     label: 'Last 6 months',
     getRange: () => getLastSixMonthsRange(),
+  },
+  {
+    key: 'last-12-months',
+    label: 'Last 12 months',
+    getRange: () => getLastTwelveMonthsRange(),
   },
   {
     key: 'this-year',
@@ -72,9 +86,20 @@ export function AnalyticsPage() {
   const [selectedPresetKey, setSelectedPresetKey] =
     useState<DateRangePresetKey | null>('this-month');
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
+  const [isComparisonEnabled, setIsComparisonEnabled] = useState(false);
   const datePickerRef = useRef<HTMLDivElement>(null);
   const [searchParams, setSearchParams] = useSearchParams();
   const selectedCategoryId = parseCategoryId(searchParams.get('categoryId'));
+  const comparisonRange = getComparisonDateRange(dateRange, selectedPresetKey);
+  const isComparisonAvailable = comparisonRange !== undefined;
+  const isComparisonActive = isComparisonEnabled && isComparisonAvailable;
+  const comparisonPeriodLabel =
+    comparisonRange !== undefined
+      ? formatReportDateRange(comparisonRange, { includeYear: true })
+      : undefined;
+  const activeComparisonPeriodLabel = isComparisonActive
+    ? comparisonPeriodLabel
+    : undefined;
 
   const categorySpend = useCategorySpend(
     dateRange,
@@ -82,6 +107,23 @@ export function AnalyticsPage() {
     categoryAmountType,
   );
   const incomeVsExpenses = useIncomeVsExpenses(dateRange, selectedCategoryId);
+  const comparisonCategorySpend = useCategorySpend(
+    comparisonRange ?? dateRange,
+    selectedCategoryId,
+    categoryAmountType,
+    isComparisonActive,
+  );
+  const comparisonIncomeVsExpenses = useIncomeVsExpenses(
+    comparisonRange ?? dateRange,
+    selectedCategoryId,
+    isComparisonActive,
+  );
+  const activeComparisonCategorySpend = isComparisonActive
+    ? comparisonCategorySpend.data
+    : undefined;
+  const activeComparisonIncomeVsExpenses = isComparisonActive
+    ? comparisonIncomeVsExpenses.data
+    : undefined;
   const categories = categorySpend.data?.categories ?? [];
   const total = categorySpend.data?.total ?? 0;
   const periodLabel = formatReportDateRange(dateRange, { includeYear: true });
@@ -239,10 +281,52 @@ export function AnalyticsPage() {
             <span className='text-sm font-medium text-muted-strong'>
               Period: {periodLabel}
             </span>
+            {activeComparisonPeriodLabel !== undefined ? (
+              <span className='text-sm font-medium text-muted'>
+                vs {activeComparisonPeriodLabel}
+              </span>
+            ) : null}
           </div>
         </div>
 
         <div className='flex flex-col gap-3 self-start sm:flex-row sm:items-center sm:self-auto'>
+          <label
+            className={cn(
+              'inline-flex h-10 items-center gap-2 text-sm font-semibold transition',
+              isComparisonAvailable
+                ? 'cursor-pointer text-muted-strong hover:text-ink'
+                : 'cursor-not-allowed text-muted opacity-50',
+              isComparisonActive && 'text-accent-cyan hover:text-accent-cyan',
+            )}
+          >
+            <input
+              type='checkbox'
+              className='peer sr-only'
+              checked={isComparisonActive}
+              disabled={!isComparisonAvailable}
+              onChange={(event) =>
+                setIsComparisonEnabled(event.currentTarget.checked)
+              }
+            />
+            <span
+              className={cn(
+                'relative h-5 w-9 rounded-full bg-canvas ring-1 ring-line transition peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-accent-lavender',
+                isComparisonActive
+                  ? 'bg-accent-cyan/25 ring-accent-cyan/60'
+                  : 'bg-canvas',
+              )}
+              aria-hidden='true'
+            >
+              <span
+                className={cn(
+                  'absolute left-0.5 top-0.5 size-4 rounded-full bg-muted-strong transition',
+                  isComparisonActive && 'translate-x-4 bg-accent-cyan',
+                )}
+              />
+            </span>
+            <span className='whitespace-nowrap'>Compare previous</span>
+          </label>
+
           <div
             className='inline-flex h-10 rounded-md border border-line bg-panel-raised p-1 shadow-shell'
             role='group'
@@ -387,11 +471,20 @@ export function AnalyticsPage() {
           title={allocationTitle}
           total={total}
           totalLabel={totalLabel}
+          comparisonLabel={activeComparisonPeriodLabel}
+          comparisonTotal={activeComparisonCategorySpend?.total}
+          comparisonType={categoryAmountType}
+          isComparisonError={comparisonCategorySpend.isError}
+          isComparisonLoading={comparisonCategorySpend.isLoading}
         />
 
         <IncomeVsExpensesCard
           data={incomeVsExpenses.data}
+          comparisonData={activeComparisonIncomeVsExpenses}
+          comparisonLabel={activeComparisonPeriodLabel}
           expenseLabel={isSubcategory ? selectedCategoryLabel : 'Expenses'}
+          isComparisonError={comparisonIncomeVsExpenses.isError}
+          isComparisonLoading={comparisonIncomeVsExpenses.isLoading}
           isError={incomeVsExpenses.isError}
           isLoading={incomeVsExpenses.isLoading}
           scopedExpenseComparison={isSubcategory}
@@ -402,7 +495,11 @@ export function AnalyticsPage() {
         <CategoriesCard
           amountLabel={isIncomeView ? 'Income' : 'Spend'}
           categories={categories}
+          comparisonCategories={activeComparisonCategorySpend?.categories}
+          comparisonLabel={activeComparisonPeriodLabel}
           emptyDescription={emptyDescription}
+          isComparisonError={comparisonCategorySpend.isError}
+          isComparisonLoading={comparisonCategorySpend.isLoading}
           isError={categorySpend.isError}
           isLoading={categorySpend.isLoading}
           itemLabel={isSubcategory ? 'Subcategory' : 'Category'}
@@ -427,6 +524,98 @@ function buildReportDateRange(
     ...(endDate !== undefined ? { endDate } : {}),
   };
 }
+
+function getComparisonDateRange(
+  range: ReportDateRange,
+  presetKey: DateRangePresetKey | null,
+): ReportDateRange | undefined {
+  if (range.startDate === undefined || range.endDate === undefined) {
+    return undefined;
+  }
+
+  const boundedRange = {
+    startDate: range.startDate,
+    endDate: range.endDate,
+  };
+
+  switch (presetKey) {
+    case 'this-month':
+    case 'last-month':
+      return shiftReportDateRange(boundedRange, -1);
+    case 'last-6-months':
+      return shiftReportDateRange(boundedRange, -6);
+    case 'last-12-months':
+      return shiftReportDateRange(boundedRange, -12);
+    case 'this-year':
+    case 'last-year':
+      return shiftReportDateRange(boundedRange, -12);
+    case 'all-time':
+      return undefined;
+    case 'last-30-days':
+    case null:
+      return getPreviousEqualLengthRange(boundedRange);
+  }
+}
+
+function shiftReportDateRange(
+  range: BoundedReportDateRange,
+  monthOffset: number,
+): ReportDateRange {
+  return {
+    startDate: shiftDateKeyByMonths(range.startDate, monthOffset),
+    endDate: shiftDateKeyByMonths(range.endDate, monthOffset),
+  };
+}
+
+function shiftDateKeyByMonths(dateKey: string, monthOffset: number): string {
+  const date = parseDateKey(dateKey);
+  const targetYear = date.getFullYear();
+  const targetMonth = date.getMonth() + monthOffset;
+  const targetMonthLastDay = new Date(targetYear, targetMonth + 1, 0).getDate();
+  const targetDay = Math.min(date.getDate(), targetMonthLastDay);
+
+  return formatDateKey(new Date(targetYear, targetMonth, targetDay));
+}
+
+function getPreviousEqualLengthRange(
+  range: BoundedReportDateRange,
+): ReportDateRange | undefined {
+  const start = parseDateKey(range.startDate);
+  const end = parseDateKey(range.endDate);
+  const durationDays = getDayIndex(end) - getDayIndex(start) + 1;
+
+  if (durationDays < 1) {
+    return undefined;
+  }
+
+  const previousEnd = addDays(start, -1);
+  const previousStart = addDays(previousEnd, -(durationDays - 1));
+
+  return {
+    startDate: formatDateKey(previousStart),
+    endDate: formatDateKey(previousEnd),
+  };
+}
+
+function addDays(date: Date, dayOffset: number): Date {
+  return new Date(
+    date.getFullYear(),
+    date.getMonth(),
+    date.getDate() + dayOffset,
+  );
+}
+
+function getDayIndex(date: Date): number {
+  return Math.floor(
+    Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()) /
+      (24 * 60 * 60 * 1000),
+  );
+}
+
+type BoundedReportDateRange = {
+  endDate: string;
+  startDate: string;
+};
 
 function parseCategoryId(value: string | null): number | undefined {
   if (value === null) {

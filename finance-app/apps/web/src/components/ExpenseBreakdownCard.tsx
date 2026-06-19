@@ -1,13 +1,23 @@
 import { PieChart } from 'lucide-react';
+import type { TransactionType } from '@finance/shared';
 import type { CategorySpend } from '../hooks/useCategorySpend';
-import { formatCurrency, formatPercentage } from '../utils';
+import {
+  formatCurrency,
+  formatPercentage,
+  formatRelativeChange,
+} from '../utils';
 import { getCategoryColor } from './categoryVisuals';
 import { CategorySpendChart } from './CategorySpendChart';
 
 type ExpenseBreakdownCardProps = {
   categories: CategorySpend[];
+  comparisonLabel?: string;
+  comparisonTotal?: number;
+  comparisonType?: TransactionType;
   emptyDescription?: string;
   emptyTitle?: string;
+  isComparisonError?: boolean;
+  isComparisonLoading?: boolean;
   isError: boolean;
   isLoading: boolean;
   metricLabel?: string;
@@ -20,8 +30,13 @@ type ExpenseBreakdownCardProps = {
 
 export function ExpenseBreakdownCard({
   categories,
+  comparisonLabel,
+  comparisonTotal,
+  comparisonType = 'expense',
   emptyDescription,
   emptyTitle,
+  isComparisonError = false,
+  isComparisonLoading = false,
   isError,
   isLoading,
   metricLabel,
@@ -43,6 +58,25 @@ export function ExpenseBreakdownCard({
           <p className='mt-1 text-sm font-medium text-muted'>
             {totalLabel}: {isLoading ? 'Loading totals' : formatCurrency(total)}
           </p>
+          {comparisonLabel !== undefined ? (
+            <p
+              className={cnComparisonClass({
+                current: total,
+                isError: isComparisonError,
+                isLoading: isComparisonLoading,
+                previous: comparisonTotal,
+                type: comparisonType,
+              })}
+            >
+              {formatComparisonStatus({
+                current: total,
+                isError: isComparisonError,
+                isLoading: isComparisonLoading,
+                label: comparisonLabel,
+                previous: comparisonTotal,
+              })}
+            </p>
+          ) : null}
         </div>
         <span className='flex size-9 shrink-0 items-center justify-center rounded-full border border-accent-lavender/35 text-accent-lavender'>
           <PieChart className='size-5' aria-hidden='true' />
@@ -51,8 +85,13 @@ export function ExpenseBreakdownCard({
 
       <CategorySpendChart
         categories={categories}
+        comparisonLabel={comparisonLabel}
+        comparisonTotal={comparisonTotal}
+        comparisonType={comparisonType}
         emptyDescription={emptyDescription}
         emptyTitle={emptyTitle}
+        isComparisonError={isComparisonError}
+        isComparisonLoading={isComparisonLoading}
         isError={isError}
         isLoading={isLoading}
         metricLabel={metricLabel}
@@ -104,4 +143,53 @@ export function ExpenseBreakdownCard({
       ) : null}
     </div>
   );
+}
+
+function formatComparisonStatus({
+  current,
+  isError,
+  isLoading,
+  label,
+  previous,
+}: {
+  current: number;
+  isError: boolean;
+  isLoading: boolean;
+  label: string;
+  previous: number | undefined;
+}): string {
+  if (isLoading) {
+    return 'Loading comparison';
+  }
+
+  if (isError || previous === undefined) {
+    return 'Comparison unavailable';
+  }
+
+  return `${formatRelativeChange(current, previous)} vs ${label}`;
+}
+
+function cnComparisonClass({
+  current,
+  isError,
+  isLoading,
+  previous,
+  type,
+}: {
+  current: number;
+  isError: boolean;
+  isLoading: boolean;
+  previous: number | undefined;
+  type: TransactionType;
+}): string {
+  const baseClass = 'mt-2 text-xs font-semibold tabular-nums';
+
+  if (isLoading || isError || previous === undefined || current === previous) {
+    return `${baseClass} text-muted`;
+  }
+
+  const delta = current - previous;
+  const isPositive = type === 'income' ? delta > 0 : delta < 0;
+
+  return `${baseClass} ${isPositive ? 'text-accent-green' : 'text-accent-rose'}`;
 }
