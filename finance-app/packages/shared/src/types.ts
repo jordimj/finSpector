@@ -28,7 +28,7 @@ export type Transaction = {
   description: string | null;
   category: string;
   subcategory: string | null;
-  account: string | null;
+  account: ExpenseAccount | null;
   type: TransactionType;
 };
 

@@ -1,5 +1,8 @@
 import { CreditCard, PiggyBank, Users } from 'lucide-react';
-import type { Transaction } from '@finance/shared';
+import {
+  getPersonalTransactionAmount,
+  type Transaction,
+} from '@finance/shared';
 import type { ReactNode } from 'react';
 import { DashboardInsightCard } from '../components/DashboardInsightCard';
 import { LastMonthExpensesCard } from '../components/LastMonthExpensesCard';
@@ -120,7 +123,10 @@ function buildAccountSummaries(
       (transaction) => transaction.account === config.account,
     );
     const recentNet = accountTransactions.reduce((sum, transaction) => {
-      const amount = Number(transaction.amount);
+      const amount = getPersonalTransactionAmount(
+        Number(transaction.amount),
+        transaction.account,
+      );
 
       return transaction.type === 'income' ? sum + amount : sum - amount;
     }, 0);

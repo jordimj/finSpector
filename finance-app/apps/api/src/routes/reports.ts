@@ -1,4 +1,5 @@
 import { pool } from '@finance/db';
+import { PERSONAL_HALF_SHARE_ACCOUNTS } from '@finance/shared';
 import type { FastifyInstance } from 'fastify';
 import {
   reportQuerySchema,
@@ -54,13 +55,19 @@ export async function registerReportRoutes(
       const result = await pool.query<MonthlyCashflowRow>(
         `
           with transactions as (
-            select date_trunc('month', date)::date as month, amount, 'expense' as type
+            select
+              date_trunc('month', date)::date as month,
+              ${personalAmountSql('expenses')} as amount,
+              'expense' as type
             from expenses
             ${expenseFilters}
 
             union all
 
-            select date_trunc('month', date)::date as month, amount, 'income' as type
+            select
+              date_trunc('month', date)::date as month,
+              ${personalAmountSql('income')} as amount,
+              'income' as type
             from income
             ${incomeFilters}
           )
@@ -105,7 +112,7 @@ export async function registerReportRoutes(
           with transactions as (
             select
               date_trunc('${grouping.sqlDatePart}', date)::date as period_start,
-              amount,
+              ${personalAmountSql('expenses')} as amount,
               'expense' as type
             from expenses
             ${expenseFilters}
@@ -114,7 +121,7 @@ export async function registerReportRoutes(
 
             select
               date_trunc('${grouping.sqlDatePart}', date)::date as period_start,
-              amount,
+              ${personalAmountSql('income')} as amount,
               'income' as type
             from income
             ${incomeFilters}
@@ -184,12 +191,12 @@ export async function registerReportRoutes(
                     categories.id as category_id,
                     categories.name as category,
                     count(income.id)::text as transaction_count,
-                    coalesce(sum(income.amount), 0)::numeric(12, 2)::text as total
+                    coalesce(sum(${personalAmountSql('income')}), 0)::numeric(12, 2)::text as total
                   from income
                   join categories on categories.id = income.category_id
                   ${incomeFilters}
                   group by categories.id, categories.name
-                  order by coalesce(sum(income.amount), 0) desc;
+                  order by coalesce(sum(${personalAmountSql('income')}), 0) desc;
                 `,
                 values,
               )
@@ -199,12 +206,12 @@ export async function registerReportRoutes(
                     categories.id as category_id,
                     categories.name as category,
                     count(expenses.id)::text as transaction_count,
-                    coalesce(sum(expenses.amount), 0)::numeric(12, 2)::text as total
+                    coalesce(sum(${personalAmountSql('expenses')}), 0)::numeric(12, 2)::text as total
                   from expenses
                   join categories on categories.id = expenses.category_id
                   ${expenseFilters}
                   group by categories.id, categories.name
-                  order by coalesce(sum(expenses.amount), 0) desc;
+                  order by coalesce(sum(${personalAmountSql('expenses')}), 0) desc;
                 `,
                 values,
               )
@@ -215,7 +222,7 @@ export async function registerReportRoutes(
                     subcategories.id as category_id,
                     coalesce(subcategories.name, 'Uncategorized') as category,
                     count(income.id)::text as transaction_count,
-                  coalesce(sum(income.amount), 0)::numeric(12, 2)::text as total
+                    coalesce(sum(${personalAmountSql('income')}), 0)::numeric(12, 2)::text as total
                   from income
                   left join subcategories on subcategories.id = income.subcategory_id
                   ${appendReportFilter(
@@ -225,7 +232,7 @@ export async function registerReportRoutes(
                     id,
                   )}
                   group by subcategories.id, coalesce(subcategories.name, 'Uncategorized')
-                  order by coalesce(sum(income.amount), 0) desc;
+                  order by coalesce(sum(${personalAmountSql('income')}), 0) desc;
                 `,
                 values,
               )
@@ -235,7 +242,7 @@ export async function registerReportRoutes(
                     subcategories.id as category_id,
                     coalesce(subcategories.name, 'Uncategorized') as category,
                     count(expenses.id)::text as transaction_count,
-                  coalesce(sum(expenses.amount), 0)::numeric(12, 2)::text as total
+                    coalesce(sum(${personalAmountSql('expenses')}), 0)::numeric(12, 2)::text as total
                   from expenses
                   left join subcategories on subcategories.id = expenses.subcategory_id
                   ${appendReportFilter(
@@ -245,7 +252,7 @@ export async function registerReportRoutes(
                     id,
                   )}
                   group by subcategories.id, coalesce(subcategories.name, 'Uncategorized')
-                  order by coalesce(sum(expenses.amount), 0) desc;
+                  order by coalesce(sum(${personalAmountSql('expenses')}), 0) desc;
                 `,
                 values,
               );
@@ -302,6 +309,14 @@ function appendReportFilter(
   }
 
   return `${existingFilter} and ${clause}`;
+}
+
+const personalHalfShareAccountSqlList = PERSONAL_HALF_SHARE_ACCOUNTS.map(
+  (account) => `'${account}'`,
+).join(', ');
+
+function personalAmountSql(tableName: 'expenses' | 'income'): string {
+  return `case when ${tableName}.account in (${personalHalfShareAccountSqlList}) then ${tableName}.amount / 2 else ${tableName}.amount end`;
 }
 
 function buildReportFilters(

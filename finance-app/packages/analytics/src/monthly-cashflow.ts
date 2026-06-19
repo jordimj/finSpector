@@ -1,4 +1,5 @@
 import { closeDb, pool } from "@finance/db";
+import { personalAmountSql } from "./personal-amount-sql.js";
 
 type MonthlyCashflowRow = {
   month: string;
@@ -10,9 +11,17 @@ type MonthlyCashflowRow = {
 async function main(): Promise<void> {
   const result = await pool.query<MonthlyCashflowRow>(`
     with months as (
-      select date_trunc('month', date)::date as month, amount, 'expense' as type from expenses
+      select
+        date_trunc('month', date)::date as month,
+        ${personalAmountSql("expenses")} as amount,
+        'expense' as type
+      from expenses
       union all
-      select date_trunc('month', date)::date as month, amount, 'income' as type from income
+      select
+        date_trunc('month', date)::date as month,
+        ${personalAmountSql("income")} as amount,
+        'income' as type
+      from income
     )
     select
       to_char(month, 'YYYY-MM') as month,

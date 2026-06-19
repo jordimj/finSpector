@@ -1,4 +1,5 @@
 import { closeDb, pool } from "@finance/db";
+import { personalAmountSql } from "./personal-amount-sql.js";
 
 type TopDescriptionRow = {
   description: string;
@@ -13,10 +14,10 @@ async function main(): Promise<void> {
       select
         coalesce(description, '[no description]') as description,
         count(*)::text as transaction_count,
-        sum(amount)::numeric(12, 2) as total
+        sum(${personalAmountSql("expenses")})::numeric(12, 2) as total
       from expenses
       group by coalesce(description, '[no description]')
-      order by total desc
+      order by sum(${personalAmountSql("expenses")}) desc
       limit $1;
     `,
     [limit]

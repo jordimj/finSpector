@@ -1,4 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
+import {
+  getPersonalTransactionAmount,
+  type ExpenseAccount,
+} from '@finance/shared';
 import { fetchJson } from '../lib/api';
 import type { AccountFilter, DateRange } from '../types';
 import {
@@ -24,6 +28,7 @@ export type LastMonthExpenses = DateRange & {
 };
 
 type ExpenseTransaction = {
+  account: ExpenseAccount | null;
   date: string;
   amount: string;
   type: 'expense';
@@ -97,9 +102,14 @@ function buildDailyExpenses(
   const totalsByDate = new Map<string, number>();
 
   for (const transaction of transactions) {
+    const amount = getPersonalTransactionAmount(
+      Number(transaction.amount),
+      transaction.account,
+    );
+
     totalsByDate.set(
       transaction.date,
-      (totalsByDate.get(transaction.date) ?? 0) + Number(transaction.amount),
+      (totalsByDate.get(transaction.date) ?? 0) + amount,
     );
   }
 

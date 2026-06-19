@@ -1,4 +1,5 @@
 import { closeDb, pool } from "@finance/db";
+import { personalAmountSql } from "./personal-amount-sql.js";
 
 type YearlySummaryRow = {
   year: string;
@@ -11,9 +12,9 @@ type YearlySummaryRow = {
 async function main(): Promise<void> {
   const result = await pool.query<YearlySummaryRow>(`
     with transactions as (
-      select date, amount, 'expense' as type from expenses
+      select date, ${personalAmountSql("expenses")} as amount, 'expense' as type from expenses
       union all
-      select date, amount, 'income' as type from income
+      select date, ${personalAmountSql("income")} as amount, 'income' as type from income
     )
     select
       extract(year from date)::text as year,
