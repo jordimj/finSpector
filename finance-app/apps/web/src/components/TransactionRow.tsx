@@ -9,14 +9,15 @@ type TransactionRowProps = {
 export function TransactionRow({ transaction }: TransactionRowProps) {
   const isIncome = transaction.type === 'income';
   const Icon = getCategoryIcon(transaction.category);
-  const category =
-    transaction.subcategory === null
-      ? transaction.category
-      : `${transaction.category} / ${transaction.subcategory}`;
+  const subcategory = transaction.subcategory;
+  const hasSubcategory = subcategory !== null && subcategory.trim().length > 0;
+  const mobileCategory = hasSubcategory
+    ? `${transaction.category} · ${subcategory}`
+    : transaction.category;
   const account = formatAccount(transaction.account);
 
   return (
-    <div className='grid gap-4 px-5 py-5 transition hover:bg-panel-raised/30 md:grid-cols-[minmax(0,1.3fr)_minmax(8rem,0.75fr)_minmax(7rem,0.65fr)_minmax(7rem,0.65fr)_minmax(7rem,0.65fr)] md:items-center'>
+    <div className='grid gap-4 px-5 py-5 transition hover:bg-panel-raised/30 md:grid-cols-[minmax(0,1.1fr)_minmax(12rem,1fr)_minmax(7rem,0.6fr)_minmax(8.5rem,0.65fr)_minmax(6.75rem,0.55fr)] md:items-center'>
       <div className='flex min-w-0 items-center gap-3'>
         <span
           className={[
@@ -32,15 +33,22 @@ export function TransactionRow({ transaction }: TransactionRowProps) {
             {transaction.description ?? (isIncome ? 'Income' : 'Expense')}
           </p>
           <p className='mt-1 truncate text-sm text-muted md:hidden'>
-            {category} · {account.label} ·{' '}
-            {formatTransactionDate(transaction.date)}
+            {mobileCategory} · {account.label} ·{' '}
+            {formatTransactionDate(transaction.date, { includeYear: true })}
           </p>
         </div>
       </div>
 
-      <span className='hidden truncate text-sm font-semibold text-muted-strong md:block'>
-        {category}
-      </span>
+      <div className='hidden min-w-0 md:block'>
+        <p className='truncate text-sm font-semibold text-muted-strong'>
+          {transaction.category}
+        </p>
+        {hasSubcategory ? (
+          <p className='mt-0.5 truncate text-sm font-medium text-muted'>
+            {subcategory}
+          </p>
+        ) : null}
+      </div>
 
       <span
         className={[
@@ -52,7 +60,7 @@ export function TransactionRow({ transaction }: TransactionRowProps) {
       </span>
 
       <span className='hidden text-sm font-medium text-muted md:block'>
-        {formatTransactionDate(transaction.date)}
+        {formatTransactionDate(transaction.date, { includeYear: true })}
       </span>
 
       <p

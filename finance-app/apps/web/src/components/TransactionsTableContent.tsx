@@ -32,7 +32,7 @@ export function TransactionsTableContent({
         {Array.from({ length: loadingRowCount }, (_, index) => (
           <div
             key={index}
-            className='grid gap-4 px-5 py-5 md:grid-cols-[minmax(0,1.3fr)_minmax(8rem,0.75fr)_minmax(7rem,0.65fr)_minmax(7rem,0.65fr)_minmax(7rem,0.65fr)] md:items-center'
+            className='grid gap-4 px-5 py-5 md:grid-cols-[minmax(0,1.1fr)_minmax(12rem,1fr)_minmax(7rem,0.6fr)_minmax(8.5rem,0.65fr)_minmax(6.75rem,0.55fr)] md:items-center'
           >
             <div className='flex min-w-0 items-center gap-3'>
               <div className='size-10 animate-pulse rounded-full bg-muted/15' />
