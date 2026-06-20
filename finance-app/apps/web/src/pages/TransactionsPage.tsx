@@ -70,7 +70,7 @@ export function TransactionsPage() {
   ]);
 
   return (
-    <section className='mx-auto flex h-full min-h-0 max-h-screen max-w-7xl flex-col'>
+    <section className='mx-auto flex h-full min-h-0 max-h-screen max-w-[1600px] flex-col'>
       <div className='mb-7 flex shrink-0 flex-col gap-3 sm:flex-row sm:items-end sm:justify-between'>
         <div>
           <h1 className='text-3xl font-semibold tracking-normal text-ink md:text-4xl'>

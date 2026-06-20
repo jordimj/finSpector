@@ -254,7 +254,7 @@ export function AnalyticsPage() {
   }
 
   return (
-    <section className='mx-auto max-w-7xl pb-8'>
+    <section className='mx-auto max-w-[1600px]'>
       <div className='mb-7 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between'>
         <div>
           {isSubcategory ? (

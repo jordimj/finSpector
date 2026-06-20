@@ -164,7 +164,7 @@ export function AppShell({ children }: AppShellProps) {
   return (
     <AccountFilterContext.Provider value={accountFilterContext}>
       <div className='h-screen overflow-hidden bg-canvas text-ink'>
-        <div className='mx-auto flex h-full w-full max-w-[1440px]'>
+        <div className='mx-auto flex h-full w-full max-w-[1920px]'>
           <aside className='hidden w-64 shrink-0 border-r border-line bg-panel px-4 py-5 lg:block'>
             <div className='mb-8 flex items-center gap-3 px-2'>
               <div className='flex size-9 items-center justify-center rounded-lg border border-line bg-panel-raised text-accent-green'>

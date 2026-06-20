@@ -9,7 +9,7 @@ export function useRecentTransactions() {
     queryKey: ['transactions', 'recent', selectedAccount],
     queryFn: () =>
       fetchTransactionsPage({
-        limit: 10,
+        limit: 5,
         offset: 0,
         selectedAccount,
       }),
