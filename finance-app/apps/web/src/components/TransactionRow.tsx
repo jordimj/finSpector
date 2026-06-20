@@ -1,5 +1,5 @@
 import { formatTransactionAmount, formatTransactionDate } from '../utils';
-import { getCategoryIcon } from './categoryVisuals';
+import { getTransactionIcon } from './categoryVisuals';
 import type { Transaction } from '@finance/shared';
 
 type TransactionRowProps = {
@@ -8,8 +8,12 @@ type TransactionRowProps = {
 
 export function TransactionRow({ transaction }: TransactionRowProps) {
   const isIncome = transaction.type === 'income';
-  const Icon = getCategoryIcon(transaction.category);
   const subcategory = transaction.subcategory;
+  const Icon = getTransactionIcon({
+    category: transaction.category,
+    subcategory,
+    type: transaction.type,
+  });
   const hasSubcategory = subcategory !== null && subcategory.trim().length > 0;
   const mobileCategory = hasSubcategory
     ? `${transaction.category} · ${subcategory}`
