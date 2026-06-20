@@ -3,7 +3,9 @@ import { PERSONAL_HALF_SHARE_ACCOUNTS } from '@finance/shared';
 import type { FastifyInstance } from 'fastify';
 import {
   reportQuerySchema,
+  toProjectionQuery,
   toReportQuery,
+  type ProjectionQuery,
   type ReportQuery,
 } from '../lib/query-params.js';
 
@@ -36,6 +38,63 @@ type CategorySpendRow = {
   transaction_count: string;
   total: string;
 };
+
+type ProjectionWindowRow = {
+  history_start_month: string;
+  history_end_month: string;
+  projection_start_month: string;
+  projection_end_month: string;
+};
+
+type ProjectionExpenseRow = {
+  month: string;
+  expenses: string;
+};
+
+type ProjectionIncomeRow = {
+  source: string;
+  latest_amount: string;
+  latest_date: string;
+};
+
+type ProjectionQueryValue = string | number | number[] | string[] | null;
+
+type ProjectionIncomeRule = {
+  categoryName: string;
+  name: string;
+  excludedMonthNumbers: readonly number[];
+  subcategoryName?: string;
+};
+
+const projectionIncomeRules: readonly ProjectionIncomeRule[] = [
+  {
+    categoryName: 'Salari',
+    name: 'Salari',
+    excludedMonthNumbers: [],
+  },
+  {
+    categoryName: 'Lloguer',
+    name: 'Lloguer / Pis',
+    excludedMonthNumbers: [],
+    subcategoryName: 'Pis',
+  },
+  {
+    categoryName: 'Lloguer',
+    name: 'Lloguer / Parking',
+    excludedMonthNumbers: [],
+    subcategoryName: 'Parking',
+  },
+  {
+    categoryName: 'Ajuda estat',
+    name: 'Ajuda estat',
+    excludedMonthNumbers: [],
+  },
+  {
+    categoryName: 'Transfe papes',
+    name: 'Transfe papes',
+    excludedMonthNumbers: [7, 8],
+  },
+];
 
 export async function registerReportRoutes(
   app: FastifyInstance,
@@ -265,6 +324,270 @@ export async function registerReportRoutes(
       }));
     },
   );
+
+  app.get<{ Querystring: ProjectionQuery }>(
+    '/projection',
+    {
+      schema: {
+        querystring: reportQuerySchema({
+          includeExcludeCategoryIds: true,
+          includeExcludeSubcategoryIds: true,
+        }),
+      },
+    },
+    async (request) => {
+      const query = toProjectionQuery(request.query);
+      const [windowResult, expenseRows, incomeRows] = await Promise.all([
+        getProjectionWindow(),
+        getProjectedExpenses(query),
+        getProjectionIncomeSources(query),
+      ]);
+      const window = windowResult.rows[0];
+
+      if (window === undefined) {
+        throw new Error('Unable to build projection window');
+      }
+
+      return buildProjectionResponse(window, expenseRows.rows, incomeRows.rows);
+    },
+  );
+}
+
+function getProjectionWindow() {
+  return pool.query<ProjectionWindowRow>(`
+    select
+      to_char(date_trunc('month', current_date) - interval '12 months', 'YYYY-MM') as history_start_month,
+      to_char(date_trunc('month', current_date) - interval '1 month', 'YYYY-MM') as history_end_month,
+      to_char(date_trunc('month', current_date), 'YYYY-MM') as projection_start_month,
+      to_char(date_trunc('month', current_date) + interval '11 months', 'YYYY-MM') as projection_end_month;
+  `);
+}
+
+function getProjectedExpenses(query: {
+  account?: string;
+  excludeCategoryIds: number[];
+  excludeSubcategoryIds: number[];
+}) {
+  const values: ProjectionQueryValue[] = [];
+  const filters = [
+    'expenses.date >= bounds.history_start',
+    'expenses.date < bounds.projection_start',
+  ];
+
+  if (query.account) {
+    values.push(query.account);
+    filters.push(`expenses.account = $${values.length}`);
+  }
+
+  if (query.excludeCategoryIds.length > 0) {
+    values.push(query.excludeCategoryIds);
+    filters.push(`expenses.category_id <> all($${values.length}::int[])`);
+  }
+
+  if (query.excludeSubcategoryIds.length > 0) {
+    values.push(query.excludeSubcategoryIds);
+    filters.push(
+      `(expenses.subcategory_id is null or expenses.subcategory_id <> all($${values.length}::int[]))`,
+    );
+  }
+
+  return pool.query<ProjectionExpenseRow>(
+    `
+      with bounds as (
+        select
+          (date_trunc('month', current_date) - interval '12 months')::date as history_start,
+          date_trunc('month', current_date)::date as projection_start
+      ),
+      projection_months as (
+        select generate_series(
+          bounds.projection_start,
+          bounds.projection_start + interval '11 months',
+          interval '1 month'
+        )::date as month
+        from bounds
+      ),
+      historical_expenses as (
+        select
+          date_trunc('month', expenses.date)::date as historical_month,
+          coalesce(sum(${personalAmountSql('expenses')}), 0) as expenses
+        from expenses
+        cross join bounds
+        where ${filters.join(' and ')}
+        group by date_trunc('month', expenses.date)::date
+      )
+      select
+        to_char(projection_months.month, 'YYYY-MM') as month,
+        coalesce(historical_expenses.expenses, 0)::numeric(12, 2)::text as expenses
+      from projection_months
+      left join historical_expenses
+        on historical_expenses.historical_month = (projection_months.month - interval '1 year')::date
+      order by projection_months.month;
+    `,
+    values,
+  );
+}
+
+function getProjectionIncomeSources(query: { account?: string }) {
+  const sourceValues = projectionIncomeRules.flatMap((rule) => [
+    rule.name,
+    rule.categoryName.toLocaleLowerCase(),
+    rule.subcategoryName?.toLocaleLowerCase() ?? null,
+  ]);
+  const sourceValuePlaceholders = projectionIncomeRules
+    .map((_, index) => {
+      const sourceNameParameter = `$${index * 3 + 1}`;
+      const categoryNameParameter = `$${index * 3 + 2}`;
+      const subcategoryNameParameter = `$${index * 3 + 3}`;
+
+      return `(${sourceNameParameter}::text, ${categoryNameParameter}::text, ${subcategoryNameParameter}::text)`;
+    })
+    .join(', ');
+  const values: ProjectionQueryValue[] = sourceValues;
+  const filters: string[] = [];
+
+  if (query.account) {
+    values.push(query.account);
+    filters.push(`income.account = $${values.length}`);
+  }
+
+  const whereClause =
+    filters.length > 0 ? `where ${filters.join(' and ')}` : '';
+
+  return pool.query<ProjectionIncomeRow>(
+    `
+      with configured_sources(source_name, category_name, subcategory_name) as (
+        values ${sourceValuePlaceholders}
+      ),
+      ranked_income as (
+        select
+          configured_sources.source_name as source,
+          ${personalAmountSql('income')}::numeric(12, 2)::text as latest_amount,
+          to_char(income.date, 'YYYY-MM-DD') as latest_date,
+          row_number() over (
+            partition by configured_sources.source_name
+            order by income.date desc, income.created_at desc, income.id desc
+          ) as source_rank
+        from income
+        join categories on categories.id = income.category_id
+        left join subcategories on subcategories.id = income.subcategory_id
+        join configured_sources
+          on lower(categories.name) = configured_sources.category_name
+          and (
+            configured_sources.subcategory_name is null
+            or lower(subcategories.name) = configured_sources.subcategory_name
+          )
+        ${whereClause}
+      )
+      select
+        source,
+        latest_amount,
+        latest_date
+      from ranked_income
+      where source_rank = 1
+      order by source;
+    `,
+    values,
+  );
+}
+
+function buildProjectionResponse(
+  window: ProjectionWindowRow,
+  expenseRows: ProjectionExpenseRow[],
+  incomeRows: ProjectionIncomeRow[],
+) {
+  const latestIncomeBySource = new Map(
+    incomeRows.map((row) => [row.source, row]),
+  );
+  const months = expenseRows.map((row) => {
+    const income = getProjectedIncomeForMonth(row.month, latestIncomeBySource);
+    const expenses = Number(row.expenses);
+    const net = income - expenses;
+
+    return {
+      month: row.month,
+      income: toMoneyText(income),
+      expenses: toMoneyText(expenses),
+      net: toMoneyText(net),
+    };
+  });
+  const incomeTotal = months.reduce(
+    (sum, month) => sum + Number(month.income),
+    0,
+  );
+  const expensesTotal = months.reduce(
+    (sum, month) => sum + Number(month.expenses),
+    0,
+  );
+  const netTotal = incomeTotal - expensesTotal;
+
+  return {
+    history: {
+      startMonth: window.history_start_month,
+      endMonth: window.history_end_month,
+    },
+    projection: {
+      startMonth: window.projection_start_month,
+      endMonth: window.projection_end_month,
+    },
+    totals: {
+      income: toMoneyText(incomeTotal),
+      expenses: toMoneyText(expensesTotal),
+      net: toMoneyText(netTotal),
+      savingsRate:
+        incomeTotal > 0 ? Number((netTotal / incomeTotal).toFixed(4)) : null,
+    },
+    months,
+    incomeSources: projectionIncomeRules.map((rule) => {
+      const latestIncome = latestIncomeBySource.get(rule.name);
+      const latestAmount = Number(latestIncome?.latest_amount ?? 0);
+      const appliedMonthCount = months.filter((month) =>
+        isIncomeSourceAppliedToMonth(rule, month.month),
+      ).length;
+
+      return {
+        name: rule.name,
+        latestAmount: toMoneyText(latestAmount),
+        latestDate: latestIncome?.latest_date ?? null,
+        appliedMonthCount,
+        total: toMoneyText(latestAmount * appliedMonthCount),
+        missing: latestIncome === undefined,
+      };
+    }),
+  };
+}
+
+function getProjectedIncomeForMonth(
+  month: string,
+  latestIncomeBySource: Map<string, ProjectionIncomeRow>,
+): number {
+  return projectionIncomeRules.reduce((sum, rule) => {
+    if (!isIncomeSourceAppliedToMonth(rule, month)) {
+      return sum;
+    }
+
+    return (
+      sum + Number(latestIncomeBySource.get(rule.name)?.latest_amount ?? 0)
+    );
+  }, 0);
+}
+
+function isIncomeSourceAppliedToMonth(
+  rule: ProjectionIncomeRule,
+  month: string,
+): boolean {
+  const monthNumber = Number(month.slice(5, 7));
+
+  return !rule.excludedMonthNumbers.includes(monthNumber);
+}
+
+function toMoneyText(value: number): string {
+  const rounded = Math.round((value + Number.EPSILON) * 100) / 100;
+
+  if (Object.is(rounded, -0) || rounded === 0) {
+    return '0.00';
+  }
+
+  return rounded.toFixed(2);
 }
 
 function getIncomeVsExpensesGrouping(

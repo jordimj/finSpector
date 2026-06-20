@@ -25,7 +25,20 @@ export type ReportQuery = {
   type?: TransactionType;
 };
 
+export type ProjectionQuery = {
+  account?: ExpenseAccount;
+  excludeCategoryIds?: string;
+  excludeSubcategoryIds?: string;
+};
+
+export type ParsedProjectionQuery = {
+  account?: ExpenseAccount;
+  excludeCategoryIds: number[];
+  excludeSubcategoryIds: number[];
+};
+
 const isoDatePattern = /^\d{4}-\d{2}-\d{2}$/;
+const commaSeparatedIntegerPattern = /^\d+(,\d+)*$/;
 
 export function transactionQuerySchema(): object {
   return {
@@ -46,6 +59,8 @@ export function transactionQuerySchema(): object {
 export function reportQuerySchema(
   options: {
     includeCategoryId?: boolean;
+    includeExcludeCategoryIds?: boolean;
+    includeExcludeSubcategoryIds?: boolean;
     includeLimit?: boolean;
     includeTransactionType?: boolean;
   } = {},
@@ -57,6 +72,24 @@ export function reportQuerySchema(
       account: { type: 'string', enum: EXPENSE_ACCOUNTS },
       ...(options.includeCategoryId
         ? { categoryId: { type: 'integer', minimum: 1 } }
+        : {}),
+      ...(options.includeExcludeCategoryIds
+        ? {
+            excludeCategoryIds: {
+              type: 'string',
+              minLength: 1,
+              pattern: commaSeparatedIntegerPattern.source,
+            },
+          }
+        : {}),
+      ...(options.includeExcludeSubcategoryIds
+        ? {
+            excludeSubcategoryIds: {
+              type: 'string',
+              minLength: 1,
+              pattern: commaSeparatedIntegerPattern.source,
+            },
+          }
         : {}),
       from: { type: 'string', pattern: isoDatePattern.source },
       to: { type: 'string', pattern: isoDatePattern.source },
@@ -84,4 +117,20 @@ export function toTransactionQuery(
 
 export function toReportQuery(query: ReportQuery): ReportQuery {
   return query;
+}
+
+export function toProjectionQuery(
+  query: ProjectionQuery,
+): ParsedProjectionQuery {
+  return {
+    account: query.account,
+    excludeCategoryIds:
+      query.excludeCategoryIds === undefined
+        ? []
+        : query.excludeCategoryIds.split(',').map(Number),
+    excludeSubcategoryIds:
+      query.excludeSubcategoryIds === undefined
+        ? []
+        : query.excludeSubcategoryIds.split(',').map(Number),
+  };
 }

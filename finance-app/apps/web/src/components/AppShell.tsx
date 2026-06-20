@@ -4,6 +4,7 @@ import {
   ChevronDown,
   CircleDollarSign,
   LayoutDashboard,
+  LineChart,
   ReceiptText,
   Search,
 } from 'lucide-react';
@@ -27,6 +28,11 @@ const navigation = [
     to: '/analytics',
     label: 'Analytics',
     icon: BarChart3,
+  },
+  {
+    to: '/projection',
+    label: 'Projection',
+    icon: LineChart,
   },
   {
     to: '/transactions',
