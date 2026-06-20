@@ -92,9 +92,7 @@ export function ProjectionPage() {
           icon={<Banknote className='size-5' aria-hidden='true' />}
           label='Projected income'
           tone='green'
-          value={
-            projection.isLoading ? '...' : formatCurrency(incomeTotal)
-          }
+          value={projection.isLoading ? '...' : formatCurrency(incomeTotal)}
         />
         <SummaryTile
           badge='Filtered'
@@ -103,9 +101,7 @@ export function ProjectionPage() {
           icon={<ReceiptText className='size-5' aria-hidden='true' />}
           label='Projected expenses'
           tone='lavender'
-          value={
-            projection.isLoading ? '...' : formatCurrency(expensesTotal)
-          }
+          value={projection.isLoading ? '...' : formatCurrency(expensesTotal)}
         />
         <SummaryTile
           badge={hasSurplus ? 'Surplus' : 'Deficit'}
@@ -131,7 +127,7 @@ export function ProjectionPage() {
         />
       </div>
 
-      <div className='mt-8 grid gap-5 xl:grid-cols-[minmax(0,1fr)_380px]'>
+      <div className='mt-8 grid gap-5 xl:grid-cols-2'>
         <div className='flex min-h-[34rem] flex-col rounded-lg border border-line bg-panel p-5 shadow-shell'>
           <div className='mb-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between'>
             <div>
@@ -182,7 +178,7 @@ function ProjectionAssumptions({
   isLoading: boolean;
 }) {
   return (
-    <aside className='rounded-lg border border-line bg-panel p-5 shadow-shell'>
+    <aside className='h-full rounded-lg border border-line bg-panel p-5 shadow-shell'>
       <div className='mb-5 flex items-start justify-between gap-3'>
         <div>
           <h2 className='text-xl font-semibold tracking-normal text-ink'>
@@ -198,7 +194,7 @@ function ProjectionAssumptions({
       </div>
 
       {isLoading ? (
-        <div className='space-y-3'>
+        <div className='grid gap-3 sm:grid-cols-2'>
           {Array.from({ length: 7 }, (_, index) => (
             <div
               key={index}
@@ -211,14 +207,17 @@ function ProjectionAssumptions({
           Projection details are unavailable.
         </p>
       ) : (
-        <div className='space-y-6'>
+        <div className='grid gap-5 lg:grid-cols-2'>
           <div>
             <h3 className='mb-3 text-sm font-semibold uppercase tracking-[0.12em] text-muted-strong'>
               Expense exclusions
             </h3>
             <div className='space-y-2'>
               {data.exclusions.map((exclusion) => (
-                <ExclusionRow key={getExclusionKey(exclusion)} item={exclusion} />
+                <ExclusionRow
+                  key={getExclusionKey(exclusion)}
+                  item={exclusion}
+                />
               ))}
             </div>
           </div>
@@ -251,9 +250,7 @@ function ExclusionRow({ item }: { item: ProjectionExpenseExclusion }) {
     <div className='rounded-md bg-panel-raised/70 px-4 py-3'>
       <div className='flex items-start justify-between gap-3'>
         <div className='min-w-0'>
-          <p className='truncate text-sm font-semibold text-ink'>
-            {label}
-          </p>
+          <p className='truncate text-sm font-semibold text-ink'>{label}</p>
           <p className='mt-1 text-xs font-medium text-muted'>
             {item.missing ? 'Not found in categories' : `${idLabel} ${item.id}`}
           </p>
@@ -273,15 +270,15 @@ function IncomeSourceRow({ source }: { source: ProjectionIncomeSource }) {
             {source.name}
           </p>
           <p className='mt-1 text-xs font-medium text-muted'>
-            {getIncomeSourceRule(source.name)} · {source.appliedMonthCount}{' '}
-            months
+            {getIncomeSourceRule(source.name)}
           </p>
           <p className='mt-2 text-xs font-semibold tabular-nums text-muted-strong'>
-            Latest{' '}
+            Latest:{' '}
             {source.missing
               ? '--'
               : formatTransactionCurrency(Number(source.latestAmount))}{' '}
-            · Total {formatTransactionCurrency(Number(source.total))}
+            <br />
+            Total: {formatTransactionCurrency(Number(source.total))}
           </p>
         </div>
         <StatusPill missing={source.missing} />
