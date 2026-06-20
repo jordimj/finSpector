@@ -8,8 +8,15 @@ import {
   ReceiptText,
   Search,
 } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { NavLink } from 'react-router-dom';
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type ReactNode,
+} from 'react';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { AccountFilterContext } from '../hooks/useAccountFilter';
 import { cn } from '../lib/utils';
 import type { AccountFilter } from '../types';
@@ -68,9 +75,18 @@ const accountOptions: Array<{
 ];
 
 export function AppShell({ children }: AppShellProps) {
+  const location = useLocation();
+  const navigate = useNavigate();
   const [selectedAccount, setSelectedAccount] = useState<AccountFilter>(null);
   const [isAccountPickerOpen, setIsAccountPickerOpen] = useState(false);
   const accountPickerRef = useRef<HTMLDivElement>(null);
+  const transactionSearchQuery = useMemo(() => {
+    if (location.pathname !== '/transactions') {
+      return '';
+    }
+
+    return new URLSearchParams(location.search).get('search') ?? '';
+  }, [location.pathname, location.search]);
   const selectedAccountOption = accountOptions.find(
     (account) => account.value === selectedAccount,
   );
@@ -120,22 +136,47 @@ export function AppShell({ children }: AppShellProps) {
     setIsAccountPickerOpen(false);
   }
 
+  function handleTransactionSearchChange(event: ChangeEvent<HTMLInputElement>) {
+    const nextSearchQuery = event.target.value;
+    const nextSearchParams = new URLSearchParams(
+      location.pathname === '/transactions' ? location.search : '',
+    );
+
+    if (nextSearchQuery.trim() === '') {
+      nextSearchParams.delete('search');
+    } else {
+      nextSearchParams.set('search', nextSearchQuery);
+    }
+
+    const nextSearch = nextSearchParams.toString();
+
+    navigate(
+      {
+        pathname: '/transactions',
+        search: nextSearch === '' ? '' : `?${nextSearch}`,
+      },
+      {
+        replace: location.pathname === '/transactions',
+      },
+    );
+  }
+
   return (
     <AccountFilterContext.Provider value={accountFilterContext}>
-      <div className="h-screen overflow-hidden bg-canvas text-ink">
-        <div className="mx-auto flex h-full w-full max-w-[1440px]">
-          <aside className="hidden w-64 shrink-0 border-r border-line bg-panel px-4 py-5 lg:block">
-            <div className="mb-8 flex items-center gap-3 px-2">
-              <div className="flex size-9 items-center justify-center rounded-lg border border-line bg-panel-raised text-accent-green">
-                <CircleDollarSign className="size-5" aria-hidden="true" />
+      <div className='h-screen overflow-hidden bg-canvas text-ink'>
+        <div className='mx-auto flex h-full w-full max-w-[1440px]'>
+          <aside className='hidden w-64 shrink-0 border-r border-line bg-panel px-4 py-5 lg:block'>
+            <div className='mb-8 flex items-center gap-3 px-2'>
+              <div className='flex size-9 items-center justify-center rounded-lg border border-line bg-panel-raised text-accent-green'>
+                <CircleDollarSign className='size-5' aria-hidden='true' />
               </div>
               <div>
-                <p className="text-sm font-semibold leading-5">Finance</p>
-                <p className="text-xs leading-5 text-muted">Local analytics</p>
+                <p className='text-sm font-semibold leading-5'>Finance</p>
+                <p className='text-xs leading-5 text-muted'>Local analytics</p>
               </div>
             </div>
 
-            <nav className="space-y-1" aria-label="Primary navigation">
+            <nav className='space-y-1' aria-label='Primary navigation'>
               {navigation.map((item) => (
                 <NavLink
                   key={item.to}
@@ -148,61 +189,64 @@ export function AppShell({ children }: AppShellProps) {
                     )
                   }
                 >
-                  <item.icon className="size-4" aria-hidden="true" />
+                  <item.icon className='size-4' aria-hidden='true' />
                   {item.label}
                 </NavLink>
               ))}
             </nav>
           </aside>
 
-          <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-            <header className="sticky top-0 z-10 shrink-0 border-b border-line bg-canvas/95 px-4 py-3 backdrop-blur md:px-6">
-              <div className="flex items-center justify-between gap-3">
-                <div className="flex items-center gap-2 lg:hidden">
-                  <div className="flex size-9 items-center justify-center rounded-lg border border-line bg-panel-raised text-accent-green">
-                    <CircleDollarSign className="size-5" aria-hidden="true" />
+          <div className='flex min-h-0 min-w-0 flex-1 flex-col'>
+            <header className='sticky top-0 z-10 shrink-0 border-b border-line bg-canvas/95 px-4 py-3 backdrop-blur md:px-6'>
+              <div className='flex items-center justify-between gap-3'>
+                <div className='flex items-center gap-2 lg:hidden'>
+                  <div className='flex size-9 items-center justify-center rounded-lg border border-line bg-panel-raised text-accent-green'>
+                    <CircleDollarSign className='size-5' aria-hidden='true' />
                   </div>
-                  <span className="text-sm font-semibold">Finance</span>
+                  <span className='text-sm font-semibold'>Finance</span>
                 </div>
 
-                <div className="hidden min-w-0 flex-1 items-center rounded-md border border-line bg-panel px-3 text-muted md:flex">
-                  <Search
-                    className="mr-2 size-4 shrink-0"
-                    aria-hidden="true"
+                <div className='hidden min-w-0 flex-1 items-center rounded-md border border-line bg-panel px-3 text-muted transition focus-within:border-accent-lavender md:flex'>
+                  <Search className='mr-2 size-4 shrink-0' aria-hidden='true' />
+                  <input
+                    aria-label='Search transactions by description'
+                    autoComplete='off'
+                    className='h-9 min-w-0 flex-1 bg-transparent text-sm text-ink placeholder:text-muted focus:outline-none'
+                    onChange={handleTransactionSearchChange}
+                    placeholder='Search transactions'
+                    type='search'
+                    value={transactionSearchQuery}
                   />
-                  <span className="truncate text-sm">Search transactions</span>
                 </div>
 
                 <div
                   ref={accountPickerRef}
-                  className="relative flex items-center gap-2"
+                  className='relative flex items-center gap-2'
                 >
                   <button
-                    type="button"
-                    className="inline-flex h-9 max-w-[11rem] items-center gap-2 rounded-md border border-line bg-panel px-3 text-sm font-medium text-muted-strong transition hover:bg-panel-raised hover:text-ink"
-                    aria-controls="account-picker"
+                    type='button'
+                    className='inline-flex h-9 max-w-[11rem] items-center gap-2 rounded-md border border-line bg-panel px-3 text-sm font-medium text-muted-strong transition hover:bg-panel-raised hover:text-ink'
+                    aria-controls='account-picker'
                     aria-expanded={isAccountPickerOpen}
-                    aria-haspopup="menu"
-                    onClick={() =>
-                      setIsAccountPickerOpen((isOpen) => !isOpen)
-                    }
+                    aria-haspopup='menu'
+                    onClick={() => setIsAccountPickerOpen((isOpen) => !isOpen)}
                   >
-                    <span className="truncate">{accountButtonLabel}</span>
+                    <span className='truncate'>{accountButtonLabel}</span>
                     <ChevronDown
                       className={cn(
                         'size-4 shrink-0 transition',
                         isAccountPickerOpen && 'rotate-180',
                       )}
-                      aria-hidden="true"
+                      aria-hidden='true'
                     />
                   </button>
 
                   {isAccountPickerOpen && (
                     <div
-                      id="account-picker"
-                      role="menu"
-                      aria-label="Accounts"
-                      className="absolute right-0 top-11 z-20 w-52 rounded-lg border border-line bg-panel p-2 shadow-shell"
+                      id='account-picker'
+                      role='menu'
+                      aria-label='Accounts'
+                      className='absolute right-0 top-11 z-20 w-52 rounded-lg border border-line bg-panel p-2 shadow-shell'
                     >
                       {accountOptions.map((account) => {
                         const isSelected = account.value === selectedAccount;
@@ -210,8 +254,8 @@ export function AppShell({ children }: AppShellProps) {
                         return (
                           <button
                             key={account.value}
-                            type="button"
-                            role="menuitemradio"
+                            type='button'
+                            role='menuitemradio'
                             aria-checked={isSelected}
                             className={cn(
                               'flex h-9 w-full items-center justify-between gap-2 rounded-md px-3 text-left text-sm font-medium text-muted-strong transition hover:bg-panel-raised hover:text-ink',
@@ -220,13 +264,13 @@ export function AppShell({ children }: AppShellProps) {
                             )}
                             onClick={() => handleAccountClick(account.value)}
                           >
-                            <span className="truncate">{account.label}</span>
+                            <span className='truncate'>{account.label}</span>
                             <Check
                               className={cn(
                                 'size-4 shrink-0 transition',
                                 isSelected ? 'opacity-100' : 'opacity-0',
                               )}
-                              aria-hidden="true"
+                              aria-hidden='true'
                             />
                           </button>
                         );
@@ -237,8 +281,8 @@ export function AppShell({ children }: AppShellProps) {
               </div>
 
               <nav
-                className="mt-3 flex gap-2 overflow-x-auto lg:hidden"
-                aria-label="Primary navigation"
+                className='mt-3 flex gap-2 overflow-x-auto lg:hidden'
+                aria-label='Primary navigation'
               >
                 {navigation.map((item) => (
                   <NavLink
@@ -251,14 +295,14 @@ export function AppShell({ children }: AppShellProps) {
                       )
                     }
                   >
-                    <item.icon className="size-4" aria-hidden="true" />
+                    <item.icon className='size-4' aria-hidden='true' />
                     {item.label}
                   </NavLink>
                 ))}
               </nav>
             </header>
 
-            <main className="min-h-0 flex-1 overflow-y-auto px-4 py-6 md:px-6 lg:px-8">
+            <main className='min-h-0 flex-1 overflow-y-auto px-4 py-6 md:px-6 lg:px-8'>
               {children}
             </main>
           </div>

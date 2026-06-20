@@ -17,17 +17,25 @@ type FetchTransactionsPageOptions = {
   limit: number;
   offset: number;
   selectedAccount: AccountFilter;
+  search?: string;
 };
 
 export function fetchTransactionsPage({
   limit,
   offset,
   selectedAccount,
+  search,
 }: FetchTransactionsPageOptions) {
   const params = new URLSearchParams({
     limit: String(limit),
     offset: String(offset),
   });
+  const descriptionSearch = search?.trim();
+
+  if (descriptionSearch !== undefined && descriptionSearch !== '') {
+    params.set('search', descriptionSearch);
+  }
+
   appendAccountParam(params, selectedAccount);
 
   return fetchJson<TransactionsResponse>({
@@ -35,16 +43,18 @@ export function fetchTransactionsPage({
   });
 }
 
-export function useTransactions() {
+export function useTransactions(search = '') {
   const { selectedAccount } = useAccountFilter();
+  const descriptionSearch = search.trim();
 
   return useInfiniteQuery({
-    queryKey: ['transactions', 'history', selectedAccount],
+    queryKey: ['transactions', 'history', selectedAccount, descriptionSearch],
     initialPageParam: 0,
     queryFn: ({ pageParam }) =>
       fetchTransactionsPage({
         limit: transactionsPageSize,
         offset: Number(pageParam),
+        search: descriptionSearch,
         selectedAccount,
       }),
     getNextPageParam: (lastPage) => {

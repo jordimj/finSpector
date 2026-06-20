@@ -1,11 +1,14 @@
 import { Loader2 } from 'lucide-react';
 import { useEffect, useMemo, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { TransactionTableHeader } from '../components/TransactionTableHeader';
 import { TransactionsTableContent } from '../components/TransactionsTableContent';
 import { useTransactions } from '../hooks/useTransactions';
 
 export function TransactionsPage() {
-  const transactionsQuery = useTransactions();
+  const [searchParams] = useSearchParams();
+  const descriptionSearch = searchParams.get('search')?.trim() ?? '';
+  const transactionsQuery = useTransactions(descriptionSearch);
   const loadMoreRef = useRef<HTMLDivElement>(null);
   const tableScrollerRef = useRef<HTMLDivElement>(null);
   const transactions = useMemo(
@@ -15,6 +18,14 @@ export function TransactionsPage() {
   );
   const isInitialLoading =
     transactionsQuery.isLoading && transactions.length === 0;
+  const transactionCountLabel =
+    descriptionSearch !== ''
+      ? transactions.length > 0
+        ? `${transactions.length} matching loaded`
+        : `Searching descriptions for "${descriptionSearch}"`
+      : transactions.length > 0
+        ? `${transactions.length} loaded`
+        : 'Every imported transaction in one place';
 
   useEffect(() => {
     const loadMoreElement = loadMoreRef.current;
@@ -67,12 +78,10 @@ export function TransactionsPage() {
           </h1>
           <div className='mt-3 flex flex-wrap items-center gap-3'>
             <span className='inline-flex h-6 items-center rounded-full bg-accent-green/15 px-3 text-xs font-bold uppercase tracking-[0.14em] text-accent-green'>
-              All history
+              {descriptionSearch === '' ? 'All history' : 'Description filter'}
             </span>
             <span className='text-sm font-medium text-muted-strong'>
-              {transactions.length > 0
-                ? `${transactions.length} loaded`
-                : 'Every imported transaction in one place'}
+              {transactionCountLabel}
             </span>
           </div>
         </div>
@@ -82,8 +91,16 @@ export function TransactionsPage() {
         <TransactionTableHeader />
         <div ref={tableScrollerRef} className='min-h-0 flex-1 overflow-y-auto'>
           <TransactionsTableContent
-            emptyDescription='Imported expenses and income will show up here.'
-            emptyTitle='No transactions yet'
+            emptyDescription={
+              descriptionSearch === ''
+                ? 'Imported expenses and income will show up here.'
+                : `No descriptions match "${descriptionSearch}".`
+            }
+            emptyTitle={
+              descriptionSearch === ''
+                ? 'No transactions yet'
+                : 'No matching transactions'
+            }
             isError={transactionsQuery.isError}
             isLoading={isInitialLoading}
             loadingRowCount={10}
@@ -103,10 +120,7 @@ export function TransactionsPage() {
                 </button>
               ) : transactionsQuery.isFetchingNextPage ? (
                 <span className='inline-flex items-center gap-2'>
-                  <Loader2
-                    className='size-4 animate-spin'
-                    aria-hidden='true'
-                  />
+                  <Loader2 className='size-4 animate-spin' aria-hidden='true' />
                   Loading more transactions
                 </span>
               ) : transactionsQuery.hasNextPage ? (
