@@ -1,29 +1,34 @@
 import {
   Banknote,
-  CalendarDays,
   CircleAlert,
   PiggyBank,
   ReceiptText,
   TrendingDown,
   TrendingUp,
 } from 'lucide-react';
+import { useMemo } from 'react';
 import { IncomeVsExpensesChart } from '../components/IncomeVsExpensesChart';
+import { ProjectionAssumptionsPanel } from '../components/ProjectionAssumptionsPanel';
 import { SummaryTile } from '../components/SummaryTile';
-import {
-  useProjection,
-  type Projection,
-  type ProjectionExpenseExclusion,
-  type ProjectionIncomeSource,
-} from '../hooks/useProjection';
-import {
-  formatCurrency,
-  formatPercentage,
-  formatTransactionCurrency,
-} from '../utils';
+import { useProjection } from '../hooks/useProjection';
+import { useProjectionSettings } from '../hooks/useProjectionSettings';
+import { formatCurrency, formatPercentage } from '../utils';
+import { applyProjectionScenario } from '../utils/projectionScenario';
 
 export function ProjectionPage() {
-  const projection = useProjection();
-  const data = projection.data;
+  const [projectionSettings, setProjectionSettings] = useProjectionSettings();
+  const projection = useProjection({
+    activeExpenseExclusionKeys:
+      projectionSettings.activeExpenseExclusionKeys,
+  });
+  const baselineData = projection.data;
+  const data = useMemo(
+    () =>
+      baselineData === undefined
+        ? undefined
+        : applyProjectionScenario(baselineData, projectionSettings),
+    [baselineData, projectionSettings],
+  );
   const incomeTotal = Number(data?.totals.income ?? 0);
   const expensesTotal = Number(data?.totals.expenses ?? 0);
   const netTotal = Number(data?.totals.net ?? incomeTotal - expensesTotal);
@@ -41,6 +46,8 @@ export function ProjectionPage() {
       ? 'Last 12 completed months'
       : formatMonthRange(data.history);
   const NetIcon = hasSurplus ? TrendingUp : TrendingDown;
+  const activeExclusionCount =
+    projectionSettings.activeExpenseExclusionKeys.length;
 
   return (
     <section className='mx-auto max-w-[1600px]'>
@@ -68,7 +75,7 @@ export function ProjectionPage() {
         />
       ) : null}
 
-      {data?.hasMissingConfiguration ? (
+      {baselineData?.hasMissingConfiguration ? (
         <ProjectionNotice
           title='Projection configuration needs attention'
           description='Some configured expense exclusions or income sources were not found, so those rows are marked below.'
@@ -95,8 +102,8 @@ export function ProjectionPage() {
           value={projection.isLoading ? '...' : formatCurrency(incomeTotal)}
         />
         <SummaryTile
-          badge='Filtered'
-          detail='Default exclusions removed'
+          badge='Editable'
+          detail={`${activeExclusionCount} exclusions applied`}
           footer='Expenses'
           icon={<ReceiptText className='size-5' aria-hidden='true' />}
           label='Projected expenses'
@@ -135,7 +142,7 @@ export function ProjectionPage() {
                 Projected monthly cashflow
               </h2>
               <span className='mt-1 block text-sm font-medium text-muted'>
-                Same-month expenses from last year with latest recurring income
+                Same-month expenses from last year with editable assumptions
               </span>
             </div>
             <div className='flex flex-wrap gap-x-5 gap-y-2 text-xs'>
@@ -164,126 +171,15 @@ export function ProjectionPage() {
           />
         </div>
 
-        <ProjectionAssumptions data={data} isLoading={projection.isLoading} />
+        <ProjectionAssumptionsPanel
+          baselineData={baselineData}
+          data={data}
+          isLoading={projection.isLoading}
+          onSettingsChange={setProjectionSettings}
+          settings={projectionSettings}
+        />
       </div>
     </section>
-  );
-}
-
-function ProjectionAssumptions({
-  data,
-  isLoading,
-}: {
-  data: Projection | undefined;
-  isLoading: boolean;
-}) {
-  return (
-    <aside className='h-full rounded-lg border border-line bg-panel p-5 shadow-shell'>
-      <div className='mb-5 flex items-start justify-between gap-3'>
-        <div>
-          <h2 className='text-xl font-semibold tracking-normal text-ink'>
-            Assumptions
-          </h2>
-          <span className='mt-1 block text-sm font-medium text-muted'>
-            Defaults used for this projection
-          </span>
-        </div>
-        <span className='flex size-9 items-center justify-center rounded-md bg-accent-cyan/15 text-accent-cyan'>
-          <CalendarDays className='size-5' aria-hidden='true' />
-        </span>
-      </div>
-
-      {isLoading ? (
-        <div className='grid gap-3 sm:grid-cols-2'>
-          {Array.from({ length: 7 }, (_, index) => (
-            <div
-              key={index}
-              className='h-14 animate-pulse rounded-md bg-panel-raised/70'
-            />
-          ))}
-        </div>
-      ) : data === undefined ? (
-        <p className='rounded-md bg-panel-raised/70 px-4 py-3 text-sm font-medium text-muted-strong'>
-          Projection details are unavailable.
-        </p>
-      ) : (
-        <div className='grid gap-5 lg:grid-cols-2'>
-          <div>
-            <h3 className='mb-3 text-sm font-semibold uppercase tracking-[0.12em] text-muted-strong'>
-              Expense exclusions
-            </h3>
-            <div className='space-y-2'>
-              {data.exclusions.map((exclusion) => (
-                <ExclusionRow
-                  key={getExclusionKey(exclusion)}
-                  item={exclusion}
-                />
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <h3 className='mb-3 text-sm font-semibold uppercase tracking-[0.12em] text-muted-strong'>
-              Income sources
-            </h3>
-            <div className='space-y-2'>
-              {data.incomeSources.map((source) => (
-                <IncomeSourceRow key={source.name} source={source} />
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-    </aside>
-  );
-}
-
-function ExclusionRow({ item }: { item: ProjectionExpenseExclusion }) {
-  const label =
-    item.subcategoryName === undefined
-      ? item.categoryName
-      : `${item.categoryName} / ${item.subcategoryName}`;
-  const idLabel =
-    item.subcategoryName === undefined ? 'Category ID' : 'Subcategory ID';
-
-  return (
-    <div className='rounded-md bg-panel-raised/70 px-4 py-3'>
-      <div className='flex items-start justify-between gap-3'>
-        <div className='min-w-0'>
-          <p className='truncate text-sm font-semibold text-ink'>{label}</p>
-          <p className='mt-1 text-xs font-medium text-muted'>
-            {item.missing ? 'Not found in categories' : `${idLabel} ${item.id}`}
-          </p>
-        </div>
-        <StatusPill missing={item.missing} />
-      </div>
-    </div>
-  );
-}
-
-function IncomeSourceRow({ source }: { source: ProjectionIncomeSource }) {
-  return (
-    <div className='rounded-md bg-panel-raised/70 px-4 py-3'>
-      <div className='flex items-start justify-between gap-3'>
-        <div className='min-w-0'>
-          <p className='truncate text-sm font-semibold text-ink'>
-            {source.name}
-          </p>
-          <p className='mt-1 text-xs font-medium text-muted'>
-            {getIncomeSourceRule(source.name)}
-          </p>
-          <p className='mt-2 text-xs font-semibold tabular-nums text-muted-strong'>
-            Latest:{' '}
-            {source.missing
-              ? '--'
-              : formatTransactionCurrency(Number(source.latestAmount))}{' '}
-            <br />
-            Total: {formatTransactionCurrency(Number(source.total))}
-          </p>
-        </div>
-        <StatusPill missing={source.missing} />
-      </div>
-    </div>
   );
 }
 
@@ -316,33 +212,6 @@ function ProjectionNotice({
       </div>
     </div>
   );
-}
-
-function StatusPill({ missing }: { missing: boolean }) {
-  return (
-    <span
-      className={[
-        'shrink-0 rounded-full px-2.5 py-1 text-xs font-bold uppercase tracking-[0.12em]',
-        missing
-          ? 'bg-accent-amber/15 text-accent-amber'
-          : 'bg-accent-green/15 text-accent-green',
-      ].join(' ')}
-    >
-      {missing ? 'Missing' : 'Found'}
-    </span>
-  );
-}
-
-function getExclusionKey(item: ProjectionExpenseExclusion): string {
-  return `${item.categoryName}:${item.subcategoryName}`;
-}
-
-function getIncomeSourceRule(sourceName: string): string {
-  if (sourceName === 'Transfe papes') {
-    return 'Every month except July and August';
-  }
-
-  return 'Every projected month';
 }
 
 function formatMonthRange(range: { startMonth: string; endMonth: string }) {

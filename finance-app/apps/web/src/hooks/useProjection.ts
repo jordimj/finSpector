@@ -7,8 +7,10 @@ import { useCategories, type Category } from './useCategories';
 import type { IncomeVsExpenses } from './useIncomeVsExpenses';
 
 export type ProjectionExpenseExclusion = {
+  active: boolean;
   categoryName: string;
   subcategoryName?: string;
+  key: string;
   id: number | null;
   missing: boolean;
 };
@@ -31,6 +33,7 @@ export type ProjectionIncomeSource = {
   latestDate: string | null;
   appliedMonthCount: number;
   total: string;
+  excludedMonthNumbers: number[];
   missing: boolean;
 };
 
@@ -64,39 +67,67 @@ export type Projection = Omit<ProjectionResponse, 'months'> & {
 
 export const projectionDefaultExpenseExclusions = [
   {
+    key: 'pis-amortitzacio',
     categoryName: 'PIS',
     subcategoryName: 'Amortització',
   },
   {
+    key: 'pis-hipoteca',
     categoryName: 'PIS',
     subcategoryName: 'Hipoteca',
   },
   {
+    key: 'cotxe-compra',
     categoryName: 'Cotxe',
     subcategoryName: 'Compra',
   },
   {
+    key: 'transfe-compte-conjunt',
     categoryName: 'Transfe compte conjunt',
   },
   {
+    key: 'transfe-compte-nil',
     categoryName: 'Transfe compte Nil',
   },
 ] as const;
 
-export function useProjection() {
+export const projectionDefaultExpenseExclusionKeys =
+  projectionDefaultExpenseExclusions.map((exclusion) => exclusion.key);
+
+type UseProjectionOptions = {
+  activeExpenseExclusionKeys?: readonly string[];
+};
+
+export function useProjection(options: UseProjectionOptions = {}) {
   const { selectedAccount } = useAccountFilter();
   const categoriesQuery = useCategories();
+  const activeExpenseExclusionKeys =
+    options.activeExpenseExclusionKeys ?? projectionDefaultExpenseExclusionKeys;
+  const activeExpenseExclusionKeySignature =
+    activeExpenseExclusionKeys.join('|');
+  const activeExpenseExclusionKeySet = useMemo(
+    () => new Set(activeExpenseExclusionKeys),
+    [activeExpenseExclusionKeySignature],
+  );
   const exclusions = useMemo(
-    () => resolveProjectionExclusions(categoriesQuery.data ?? []),
-    [categoriesQuery.data],
+    () =>
+      resolveProjectionExclusions(
+        categoriesQuery.data ?? [],
+        activeExpenseExclusionKeySet,
+      ),
+    [activeExpenseExclusionKeySet, categoriesQuery.data],
   );
   const excludeCategoryIds = exclusions.flatMap((exclusion) =>
-    exclusion.subcategoryName === undefined && exclusion.id !== null
+    exclusion.active &&
+    exclusion.subcategoryName === undefined &&
+    exclusion.id !== null
       ? [exclusion.id]
       : [],
   );
   const excludeSubcategoryIds = exclusions.flatMap((exclusion) =>
-    exclusion.subcategoryName !== undefined && exclusion.id !== null
+    exclusion.active &&
+    exclusion.subcategoryName !== undefined &&
+    exclusion.id !== null
       ? [exclusion.id]
       : [],
   );
@@ -105,6 +136,7 @@ export function useProjection() {
       'reports',
       'projection',
       selectedAccount,
+      activeExpenseExclusionKeySignature,
       excludeCategoryIds,
       excludeSubcategoryIds,
     ],
@@ -143,16 +175,19 @@ export function useProjection() {
 
 function resolveProjectionExclusions(
   categories: Category[],
+  activeExpenseExclusionKeySet: Set<string>,
 ): ProjectionExpenseExclusion[] {
   return projectionDefaultExpenseExclusions.map((target) => {
     const categoryName = normalizeTaxonomyName(target.categoryName);
     const category = categories.find(
       (item) => normalizeTaxonomyName(item.name) === categoryName,
     );
+    const active = activeExpenseExclusionKeySet.has(target.key);
 
     if (!('subcategoryName' in target)) {
       return {
         ...target,
+        active,
         id: category?.id ?? null,
         missing: category === undefined,
       };
@@ -165,6 +200,7 @@ function resolveProjectionExclusions(
 
     return {
       ...target,
+      active,
       id: subcategory?.id ?? null,
       missing: subcategory === undefined,
     };
@@ -213,9 +249,9 @@ function toProjection(
     chartData,
     exclusions,
     hasMissingConfiguration:
-      missingExclusions.length > 0 ||
+      missingExclusions.some((exclusion) => exclusion.active) ||
       response.incomeSources.some((source) => source.missing),
-    missingExclusions,
+    missingExclusions: missingExclusions.filter((exclusion) => exclusion.active),
     months,
   };
 }

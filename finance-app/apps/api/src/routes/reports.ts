@@ -550,6 +550,7 @@ function buildProjectionResponse(
         latestDate: latestIncome?.latest_date ?? null,
         appliedMonthCount,
         total: toMoneyText(latestAmount * appliedMonthCount),
+        excludedMonthNumbers: [...rule.excludedMonthNumbers],
         missing: latestIncome === undefined,
       };
     }),
