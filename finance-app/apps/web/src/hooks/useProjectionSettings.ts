@@ -11,8 +11,17 @@ export type ProjectionScenarioEvent = {
   type: ProjectionScenarioEventType;
 };
 
+export type ProjectionCustomExpenseExclusion = {
+  categoryId: number;
+  categoryName: string;
+  id: string;
+  subcategoryId?: number;
+  subcategoryName?: string;
+};
+
 export type ProjectionSettings = {
   activeExpenseExclusionKeys: string[];
+  customExpenseExclusions: ProjectionCustomExpenseExclusion[];
   oneOffEvents: ProjectionScenarioEvent[];
 };
 
@@ -24,8 +33,18 @@ const validExclusionKeys: ReadonlySet<string> = new Set(
 
 export const projectionDefaultSettings: ProjectionSettings = {
   activeExpenseExclusionKeys: [...projectionDefaultExpenseExclusionKeys],
+  customExpenseExclusions: [],
   oneOffEvents: [],
 };
+
+export function createProjectionExpenseExclusionId(
+  categoryId: number,
+  subcategoryId?: number,
+): string {
+  return subcategoryId === undefined
+    ? `category:${categoryId}`
+    : `subcategory:${subcategoryId}`;
+}
 
 export function useProjectionSettings(): [
   ProjectionSettings,
@@ -69,6 +88,9 @@ function normalizeProjectionSettings(value: unknown): ProjectionSettings {
     activeExpenseExclusionKeys: normalizeExclusionKeys(
       value.activeExpenseExclusionKeys,
     ),
+    customExpenseExclusions: normalizeCustomExpenseExclusions(
+      value.customExpenseExclusions,
+    ),
     oneOffEvents: normalizeOneOffEvents(value.oneOffEvents),
   };
 }
@@ -81,6 +103,59 @@ function normalizeExclusionKeys(value: unknown): string[] {
   return value.flatMap((item) =>
     typeof item === 'string' && validExclusionKeys.has(item) ? [item] : [],
   );
+}
+
+function normalizeCustomExpenseExclusions(
+  value: unknown,
+): ProjectionCustomExpenseExclusion[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  const seenIds = new Set<string>();
+
+  return value.flatMap((item) => {
+    if (!isRecord(item)) {
+      return [];
+    }
+
+    const categoryId = toPositiveInteger(item.categoryId);
+    const subcategoryId = toPositiveInteger(item.subcategoryId);
+    const categoryName = toTrimmedText(item.categoryName);
+    const subcategoryName = toTrimmedText(item.subcategoryName);
+
+    if (categoryId === null || categoryName.length === 0) {
+      return [];
+    }
+
+    const id = createProjectionExpenseExclusionId(
+      categoryId,
+      subcategoryId ?? undefined,
+    );
+
+    if (seenIds.has(id)) {
+      return [];
+    }
+
+    seenIds.add(id);
+
+    return [
+      {
+        categoryId,
+        categoryName,
+        id,
+        ...(subcategoryId === null
+          ? {}
+          : {
+              subcategoryId,
+              subcategoryName:
+                subcategoryName.length > 0
+                  ? subcategoryName
+                  : `Subcategory ${subcategoryId}`,
+            }),
+      },
+    ];
+  });
 }
 
 function normalizeOneOffEvents(value: unknown): ProjectionScenarioEvent[] {
@@ -119,6 +194,16 @@ function toFiniteNumber(value: unknown): number {
   const numberValue = Number(value);
 
   return Number.isFinite(numberValue) ? numberValue : 0;
+}
+
+function toPositiveInteger(value: unknown): number | null {
+  const numberValue = Number(value);
+
+  return Number.isInteger(numberValue) && numberValue > 0 ? numberValue : null;
+}
+
+function toTrimmedText(value: unknown): string {
+  return typeof value === 'string' ? value.trim() : '';
 }
 
 function createProjectionEventId(): string {

@@ -18,8 +18,11 @@ import type {
   ProjectionExpenseExclusion,
   ProjectionIncomeSource,
 } from '../hooks/useProjection';
+import { useCategories, type Category } from '../hooks/useCategories';
 import {
+  createProjectionExpenseExclusionId,
   projectionDefaultSettings,
+  type ProjectionCustomExpenseExclusion,
   type ProjectionScenarioEvent,
   type ProjectionSettings,
 } from '../hooks/useProjectionSettings';
@@ -77,6 +80,37 @@ export function ProjectionAssumptionsPanel({
     });
   }
 
+  function handleAddCustomExclusion(
+    exclusion: ProjectionCustomExpenseExclusion,
+  ) {
+    updateSettings((current) => {
+      if (
+        current.customExpenseExclusions.some(
+          (existingExclusion) => existingExclusion.id === exclusion.id,
+        )
+      ) {
+        return current;
+      }
+
+      return {
+        ...current,
+        customExpenseExclusions: [
+          ...current.customExpenseExclusions,
+          exclusion,
+        ],
+      };
+    });
+  }
+
+  function handleRemoveCustomExclusion(exclusionId: string) {
+    updateSettings((current) => ({
+      ...current,
+      customExpenseExclusions: current.customExpenseExclusions.filter(
+        (exclusion) => exclusion.id !== exclusionId,
+      ),
+    }));
+  }
+
   function handleAddEvent() {
     const firstMonth = monthOptions[0]?.month ?? getCurrentMonthKey();
 
@@ -122,6 +156,7 @@ export function ProjectionAssumptionsPanel({
       activeExpenseExclusionKeys: [
         ...projectionDefaultSettings.activeExpenseExclusionKeys,
       ],
+      customExpenseExclusions: [],
       oneOffEvents: [],
     });
   }
@@ -174,10 +209,12 @@ export function ProjectionAssumptionsPanel({
         <AssumptionsDialog
           baselineData={baselineData}
           monthOptions={monthOptions}
+          onAddCustomExclusion={handleAddCustomExclusion}
           onAddEvent={handleAddEvent}
           onClose={() => setIsDialogOpen(false)}
           onEventChange={handleEventChange}
           onExclusionToggle={handleExclusionToggle}
+          onRemoveCustomExclusion={handleRemoveCustomExclusion}
           onRemoveEvent={handleRemoveEvent}
           onReset={handleResetSettings}
           settings={settings}
@@ -328,16 +365,19 @@ function ReadOnlyIncomeRow({ source }: { source: ProjectionIncomeSource }) {
 function AssumptionsDialog({
   baselineData,
   monthOptions,
+  onAddCustomExclusion,
   onAddEvent,
   onClose,
   onEventChange,
   onExclusionToggle,
+  onRemoveCustomExclusion,
   onRemoveEvent,
   onReset,
   settings,
 }: {
   baselineData: Projection;
   monthOptions: Projection['months'];
+  onAddCustomExclusion: (exclusion: ProjectionCustomExpenseExclusion) => void;
   onAddEvent: () => void;
   onClose: () => void;
   onEventChange: (
@@ -345,10 +385,13 @@ function AssumptionsDialog({
     patch: Partial<ProjectionScenarioEvent>,
   ) => void;
   onExclusionToggle: (exclusionKey: string, active: boolean) => void;
+  onRemoveCustomExclusion: (exclusionId: string) => void;
   onRemoveEvent: (eventId: string) => void;
   onReset: () => void;
   settings: ProjectionSettings;
 }) {
+  const categoriesQuery = useCategories('expense');
+
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === 'Escape') {
@@ -408,11 +451,19 @@ function AssumptionsDialog({
                 description='These are removed from the historical expense baseline before projecting future months.'
                 title='Expense exclusions'
               >
-                <div className='space-y-2'>
+                <ExpenseExclusionPicker
+                  categories={categoriesQuery.data ?? []}
+                  exclusions={baselineData.exclusions}
+                  isLoading={categoriesQuery.isLoading}
+                  onAdd={onAddCustomExclusion}
+                />
+
+                <div className='mt-3 space-y-2'>
                   {baselineData.exclusions.map((exclusion) => (
                     <EditableExclusionRow
                       key={exclusion.key}
                       exclusion={exclusion}
+                      onRemove={onRemoveCustomExclusion}
                       onToggle={onExclusionToggle}
                     />
                   ))}
@@ -482,13 +533,172 @@ function DialogSection({
   );
 }
 
+type ExpenseExclusionOption = {
+  exclusion: ProjectionCustomExpenseExclusion;
+  label: string;
+  value: string;
+};
+
+function ExpenseExclusionPicker({
+  categories,
+  exclusions,
+  isLoading,
+  onAdd,
+}: {
+  categories: Category[];
+  exclusions: ProjectionExpenseExclusion[];
+  isLoading: boolean;
+  onAdd: (exclusion: ProjectionCustomExpenseExclusion) => void;
+}) {
+  const [selectedValue, setSelectedValue] = useState('');
+  const options = buildExpenseExclusionOptions(categories, exclusions);
+  const selectedOption =
+    options.find((option) => option.value === selectedValue) ?? options[0];
+  const selectValue = selectedOption?.value ?? '';
+
+  return (
+    <div className='rounded-md border border-line bg-canvas/70 p-3'>
+      <div className='flex flex-col gap-2 sm:flex-row'>
+        <select
+          className='h-10 min-w-0 flex-1 rounded-md border border-line bg-panel px-3 text-sm font-semibold text-ink outline-none transition focus:border-accent-lavender disabled:cursor-not-allowed disabled:opacity-60'
+          aria-label='Expense category to exclude'
+          disabled={isLoading || options.length === 0}
+          value={selectValue}
+          onChange={(event) => setSelectedValue(event.currentTarget.value)}
+        >
+          {isLoading ? (
+            <option>Loading categories...</option>
+          ) : options.length === 0 ? (
+            <option>No categories left to add</option>
+          ) : (
+            options.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))
+          )}
+        </select>
+
+        <button
+          type='button'
+          className='inline-flex h-10 items-center justify-center gap-2 rounded-md border border-line bg-panel px-3 text-sm font-semibold text-muted-strong transition hover:text-ink disabled:cursor-not-allowed disabled:opacity-50'
+          aria-label='Add expense exclusion'
+          disabled={selectedOption === undefined}
+          onClick={() => {
+            if (selectedOption === undefined) {
+              return;
+            }
+
+            onAdd(selectedOption.exclusion);
+            setSelectedValue('');
+          }}
+        >
+          <Plus className='size-4' aria-hidden='true' />
+          Add
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function buildExpenseExclusionOptions(
+  categories: Category[],
+  exclusions: ProjectionExpenseExclusion[],
+): ExpenseExclusionOption[] {
+  const existingTargets = new Set(
+    exclusions.flatMap((exclusion) =>
+      exclusion.targetId === null
+        ? []
+        : [`${exclusion.targetType}:${exclusion.targetId}`],
+    ),
+  );
+
+  return categories.flatMap((category) => {
+    const categoryOption = toExpenseExclusionOption(category);
+    const subcategoryOptions = category.subcategories.map((subcategory) =>
+      toExpenseExclusionOption(category, subcategory),
+    );
+
+    return [categoryOption, ...subcategoryOptions].filter(
+      (option) => !existingTargets.has(option.value),
+    );
+  });
+}
+
+function toExpenseExclusionOption(
+  category: Category,
+  subcategory?: Category['subcategories'][number],
+): ExpenseExclusionOption {
+  const id = createProjectionExpenseExclusionId(category.id, subcategory?.id);
+
+  return {
+    exclusion: {
+      categoryId: category.id,
+      categoryName: category.name,
+      id,
+      ...(subcategory === undefined
+        ? {}
+        : {
+            subcategoryId: subcategory.id,
+            subcategoryName: subcategory.name,
+          }),
+    },
+    label:
+      subcategory === undefined
+        ? category.name
+        : `${category.name} / ${subcategory.name}`,
+    value:
+      subcategory === undefined
+        ? `category:${category.id}`
+        : `subcategory:${subcategory.id}`,
+  };
+}
+
 function EditableExclusionRow({
   exclusion,
+  onRemove,
   onToggle,
 }: {
   exclusion: ProjectionExpenseExclusion;
+  onRemove: (exclusionId: string) => void;
   onToggle: (exclusionKey: string, active: boolean) => void;
 }) {
+  if (exclusion.custom) {
+    return (
+      <div className='flex items-start gap-3 rounded-md bg-canvas/70 px-3 py-2'>
+        <span
+          className='mt-0.5 flex size-5 shrink-0 items-center justify-center rounded border border-accent-cyan bg-accent-cyan text-canvas'
+          aria-hidden='true'
+        >
+          <Check className='size-3.5' />
+        </span>
+        <span className='min-w-0 flex-1'>
+          <span className='block truncate text-sm font-semibold text-ink'>
+            {getExclusionLabel(exclusion)}
+          </span>
+          <span className='mt-0.5 block text-xs font-medium text-muted'>
+            {exclusion.missing
+              ? 'Not found in categories'
+              : 'Added from categories'}
+          </span>
+        </span>
+        <button
+          type='button'
+          className='flex size-8 shrink-0 items-center justify-center rounded-md border border-line bg-panel text-muted-strong transition hover:text-accent-rose focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-lavender'
+          aria-label={`Remove ${getExclusionLabel(exclusion)}`}
+          disabled={exclusion.customId === undefined}
+          onClick={() => {
+            if (exclusion.customId !== undefined) {
+              onRemove(exclusion.customId);
+            }
+          }}
+        >
+          <Trash2 className='size-4' aria-hidden='true' />
+        </button>
+      </div>
+    );
+  }
+
   return (
     <label className='flex cursor-pointer items-start gap-3 rounded-md bg-canvas/70 px-3 py-2 transition hover:bg-canvas'>
       <input

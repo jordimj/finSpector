@@ -20,6 +20,7 @@ export function ProjectionPage() {
   const projection = useProjection({
     activeExpenseExclusionKeys:
       projectionSettings.activeExpenseExclusionKeys,
+    customExpenseExclusions: projectionSettings.customExpenseExclusions,
   });
   const baselineData = projection.data;
   const data = useMemo(
@@ -47,7 +48,9 @@ export function ProjectionPage() {
       : formatMonthRange(data.history);
   const NetIcon = hasSurplus ? TrendingUp : TrendingDown;
   const activeExclusionCount =
-    projectionSettings.activeExpenseExclusionKeys.length;
+    baselineData?.exclusions.filter((exclusion) => exclusion.active).length ??
+    projectionSettings.activeExpenseExclusionKeys.length +
+      projectionSettings.customExpenseExclusions.length;
 
   return (
     <section className='mx-auto max-w-[1600px]'>

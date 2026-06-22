@@ -5,14 +5,19 @@ import { appendAccountParam, formatDateKey } from '../utils';
 import { useAccountFilter } from './useAccountFilter';
 import { useCategories, type Category } from './useCategories';
 import type { IncomeVsExpenses } from './useIncomeVsExpenses';
+import type { ProjectionCustomExpenseExclusion } from './useProjectionSettings';
 
 export type ProjectionExpenseExclusion = {
   active: boolean;
   categoryName: string;
+  custom?: boolean;
+  customId?: string;
   subcategoryName?: string;
   key: string;
   id: number | null;
   missing: boolean;
+  targetId: number | null;
+  targetType: 'category' | 'subcategory';
 };
 
 type ProjectionWindow = {
@@ -94,41 +99,61 @@ export const projectionDefaultExpenseExclusions = [
 export const projectionDefaultExpenseExclusionKeys =
   projectionDefaultExpenseExclusions.map((exclusion) => exclusion.key);
 
+const emptyCustomExpenseExclusions: readonly ProjectionCustomExpenseExclusion[] =
+  [];
+
 type UseProjectionOptions = {
   activeExpenseExclusionKeys?: readonly string[];
+  customExpenseExclusions?: readonly ProjectionCustomExpenseExclusion[];
 };
 
 export function useProjection(options: UseProjectionOptions = {}) {
   const { selectedAccount } = useAccountFilter();
-  const categoriesQuery = useCategories();
+  const categoriesQuery = useCategories('expense');
   const activeExpenseExclusionKeys =
     options.activeExpenseExclusionKeys ?? projectionDefaultExpenseExclusionKeys;
+  const customExpenseExclusions =
+    options.customExpenseExclusions ?? emptyCustomExpenseExclusions;
   const activeExpenseExclusionKeySignature =
     activeExpenseExclusionKeys.join('|');
+  const customExpenseExclusionSignature = customExpenseExclusions
+    .map((exclusion) => exclusion.id)
+    .join('|');
   const activeExpenseExclusionKeySet = useMemo(
     () => new Set(activeExpenseExclusionKeys),
     [activeExpenseExclusionKeySignature],
   );
   const exclusions = useMemo(
-    () =>
-      resolveProjectionExclusions(
+    () => [
+      ...resolveProjectionExclusions(
         categoriesQuery.data ?? [],
         activeExpenseExclusionKeySet,
       ),
-    [activeExpenseExclusionKeySet, categoriesQuery.data],
+      ...resolveCustomProjectionExclusions(
+        categoriesQuery.data ?? [],
+        customExpenseExclusions,
+      ),
+    ],
+    [
+      activeExpenseExclusionKeySet,
+      categoriesQuery.data,
+      customExpenseExclusionSignature,
+    ],
   );
   const excludeCategoryIds = exclusions.flatMap((exclusion) =>
     exclusion.active &&
-    exclusion.subcategoryName === undefined &&
-    exclusion.id !== null
-      ? [exclusion.id]
+    !exclusion.missing &&
+    exclusion.targetType === 'category' &&
+    exclusion.targetId !== null
+      ? [exclusion.targetId]
       : [],
   );
   const excludeSubcategoryIds = exclusions.flatMap((exclusion) =>
     exclusion.active &&
-    exclusion.subcategoryName !== undefined &&
-    exclusion.id !== null
-      ? [exclusion.id]
+    !exclusion.missing &&
+    exclusion.targetType === 'subcategory' &&
+    exclusion.targetId !== null
+      ? [exclusion.targetId]
       : [],
   );
   const projectionQuery = useQuery({
@@ -190,6 +215,8 @@ function resolveProjectionExclusions(
         active,
         id: category?.id ?? null,
         missing: category === undefined,
+        targetId: category?.id ?? null,
+        targetType: 'category',
       };
     }
 
@@ -203,8 +230,68 @@ function resolveProjectionExclusions(
       active,
       id: subcategory?.id ?? null,
       missing: subcategory === undefined,
+      targetId: subcategory?.id ?? null,
+      targetType: 'subcategory',
     };
   });
+}
+
+function resolveCustomProjectionExclusions(
+  categories: Category[],
+  customExpenseExclusions: readonly ProjectionCustomExpenseExclusion[],
+): ProjectionExpenseExclusion[] {
+  const seenIds = new Set<string>();
+
+  return customExpenseExclusions.flatMap(
+    (target): ProjectionExpenseExclusion[] => {
+      if (seenIds.has(target.id)) {
+        return [];
+      }
+
+      seenIds.add(target.id);
+
+      const category = categories.find((item) => item.id === target.categoryId);
+      const categoryName = category?.name ?? target.categoryName;
+
+      if (target.subcategoryId === undefined) {
+        return [
+          {
+            active: true,
+            categoryName,
+            custom: true,
+            customId: target.id,
+            id: category?.id ?? null,
+            key: `custom:${target.id}`,
+            missing: category === undefined,
+            targetId: category?.id ?? null,
+            targetType: 'category',
+          },
+        ];
+      }
+
+      const subcategory = category?.subcategories.find(
+        (item) => item.id === target.subcategoryId,
+      );
+
+      return [
+        {
+          active: true,
+          categoryName,
+          custom: true,
+          customId: target.id,
+          id: subcategory?.id ?? null,
+          key: `custom:${target.id}`,
+          missing: category === undefined || subcategory === undefined,
+          subcategoryName:
+            subcategory?.name ??
+            target.subcategoryName ??
+            `Subcategory ${target.subcategoryId}`,
+          targetId: subcategory?.id ?? null,
+          targetType: 'subcategory',
+        },
+      ];
+    },
+  );
 }
 
 function normalizeTaxonomyName(value: string): string {

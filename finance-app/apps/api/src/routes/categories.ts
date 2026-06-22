@@ -17,23 +17,61 @@ type CategoryResponse = {
   }>;
 };
 
+type CategoryQuery = {
+  type?: 'expense' | 'income';
+};
+
 export async function registerCategoryRoutes(
   app: FastifyInstance,
 ): Promise<void> {
-  app.get('/', async () => {
-    const result = await pool.query<CategoryRow>(`
-      select
+  app.get<{ Querystring: CategoryQuery }>('/', async (request) => {
+    const result = await pool.query<CategoryRow>(
+      getCategoryQuery(request.query.type),
+    );
+
+    return groupCategoryRows(result.rows);
+  });
+}
+
+function getCategoryQuery(type: CategoryQuery['type']): string {
+  if (type === 'expense') {
+    return `
+      select distinct
         categories.id,
         categories.name,
         subcategories.id as subcategory_id,
         subcategories.name as subcategory_name
-      from categories
-      left join subcategories on subcategories.category_id = categories.id
+      from expenses
+      join categories on categories.id = expenses.category_id
+      left join subcategories on subcategories.id = expenses.subcategory_id
       order by categories.name, subcategories.name;
-    `);
+    `;
+  }
 
-    return groupCategoryRows(result.rows);
-  });
+  if (type === 'income') {
+    return `
+      select distinct
+        categories.id,
+        categories.name,
+        subcategories.id as subcategory_id,
+        subcategories.name as subcategory_name
+      from income
+      join categories on categories.id = income.category_id
+      left join subcategories on subcategories.id = income.subcategory_id
+      order by categories.name, subcategories.name;
+    `;
+  }
+
+  return `
+    select
+      categories.id,
+      categories.name,
+      subcategories.id as subcategory_id,
+      subcategories.name as subcategory_name
+    from categories
+    left join subcategories on subcategories.category_id = categories.id
+    order by categories.name, subcategories.name;
+  `;
 }
 
 function groupCategoryRows(rows: CategoryRow[]): CategoryResponse[] {
