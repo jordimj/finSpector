@@ -11,7 +11,7 @@ import { useCategories, type Category } from '../hooks/useCategories';
 import { apiBaseUrl } from '../lib/api';
 import { cn } from '../lib/utils';
 
-type PdfPreviewRow = {
+type ImportPreviewRow = {
   date: string;
   description: string;
   concept?: string;
@@ -28,21 +28,21 @@ type PdfPreviewRow = {
   reviewed?: boolean;
 };
 
-type ReviewPreviewRow = PdfPreviewRow & {
+type ImportReviewRow = ImportPreviewRow & {
   originalDescription: string;
   originalSuggestedCategory: string | null;
   originalSuggestedSubcategory: string | null;
   originalReviewKey: string;
 };
 
-type PdfPreviewResponse = {
+type ImportPreviewResponse = {
   extractedTextLength: number;
   rowCount: number;
-  rows: PdfPreviewRow[];
+  rows: ImportPreviewRow[];
   textPreview: string;
 };
 
-const csvHeaders: Array<keyof PdfPreviewRow> = [
+const csvHeaders: Array<keyof ImportPreviewRow> = [
   'date',
   'description',
   'amount',
@@ -56,9 +56,9 @@ const csvHeaders: Array<keyof PdfPreviewRow> = [
   'matchReason',
 ];
 
-export function PdfImportPage() {
+export function ImportPage() {
   const [file, setFile] = useState<File | null>(null);
-  const [rows, setRows] = useState<ReviewPreviewRow[]>([]);
+  const [rows, setRows] = useState<ImportReviewRow[]>([]);
   const [textPreview, setTextPreview] = useState('');
   const [extractedTextLength, setExtractedTextLength] = useState(0);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -121,8 +121,8 @@ export function PdfImportPage() {
         );
       }
 
-      const preview = (await response.json()) as PdfPreviewResponse;
-      setRows(preview.rows.map(toReviewPreviewRow));
+      const preview = (await response.json()) as ImportPreviewResponse;
+      setRows(preview.rows.map(toImportReviewRow));
       setTextPreview(preview.textPreview);
       setExtractedTextLength(preview.extractedTextLength);
     } catch (error) {
@@ -147,7 +147,10 @@ export function PdfImportPage() {
     URL.revokeObjectURL(url);
   }
 
-  function updateReviewRows(index: number, changes: Partial<PdfPreviewRow>) {
+  function updateReviewRows(
+    index: number,
+    changes: Partial<ImportPreviewRow>,
+  ) {
     setRows((currentRows) => {
       const targetRow = currentRows[index];
 
@@ -182,7 +185,7 @@ export function PdfImportPage() {
           ? row.originalReviewKey === targetKey
           : rowIndex === index;
 
-        return shouldReset ? resetReviewPreviewRow(row) : row;
+        return shouldReset ? resetImportReviewRow(row) : row;
       });
     });
   }
@@ -222,7 +225,7 @@ export function PdfImportPage() {
         >
           <label
             className='flex min-h-48 cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed border-line bg-panel-raised/55 px-5 py-8 text-center transition hover:border-accent-lavender'
-            htmlFor='pdf-import-file'
+            htmlFor='import-assistant-file'
           >
             <UploadCloud
               className='mb-4 size-9 text-accent-lavender'
@@ -238,7 +241,7 @@ export function PdfImportPage() {
             <input
               accept='application/pdf,.pdf,.xls,.xlsx,.xlsm'
               className='sr-only'
-              id='pdf-import-file'
+              id='import-assistant-file'
               onChange={handleFileChange}
               type='file'
             />
@@ -406,8 +409,8 @@ function PreviewRow({
   categories: Category[];
   index: number;
   matchingCount: number;
-  row: ReviewPreviewRow;
-  onChange: (index: number, changes: Partial<PdfPreviewRow>) => void;
+  row: ImportReviewRow;
+  onChange: (index: number, changes: Partial<ImportPreviewRow>) => void;
   onReset: (index: number) => void;
 }) {
   const selectedCategory = categories.find(
@@ -554,7 +557,7 @@ function PreviewRow({
   );
 }
 
-function toReviewPreviewRow(row: PdfPreviewRow): ReviewPreviewRow {
+function toImportReviewRow(row: ImportPreviewRow): ImportReviewRow {
   return {
     ...row,
     originalDescription: row.description,
@@ -564,7 +567,7 @@ function toReviewPreviewRow(row: PdfPreviewRow): ReviewPreviewRow {
   };
 }
 
-function resetReviewPreviewRow(row: ReviewPreviewRow): ReviewPreviewRow {
+function resetImportReviewRow(row: ImportReviewRow): ImportReviewRow {
   return {
     ...row,
     description: row.originalDescription,
@@ -585,7 +588,7 @@ function formatCategorySuggestion(
   return subcategory === null ? category : `${category} / ${subcategory}`;
 }
 
-function toReviewCsv(rows: PdfPreviewRow[]): string {
+function toReviewCsv(rows: ImportPreviewRow[]): string {
   return [
     csvHeaders.join(';'),
     ...rows.map((row) =>
@@ -594,7 +597,9 @@ function toReviewCsv(rows: PdfPreviewRow[]): string {
   ].join('\n');
 }
 
-function escapeCsvValue(value: PdfPreviewRow[keyof PdfPreviewRow]): string {
+function escapeCsvValue(
+  value: ImportPreviewRow[keyof ImportPreviewRow],
+): string {
   const text = value === null || value === undefined ? '' : String(value);
 
   if (!/[;"\n\r]/.test(text)) {
@@ -604,7 +609,7 @@ function escapeCsvValue(value: PdfPreviewRow[keyof PdfPreviewRow]): string {
   return `"${text.split('"').join('""')}"`;
 }
 
-function buildReviewRowKey(row: PdfPreviewRow): string {
+function buildReviewRowKey(row: ImportPreviewRow): string {
   return `${normalizeReviewText(row.concept ?? '')}::${normalizeReviewText(
     row.description,
   )}`;
