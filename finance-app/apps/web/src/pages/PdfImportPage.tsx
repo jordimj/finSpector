@@ -1,5 +1,13 @@
-import { Download, FileText, Loader2, UploadCloud } from 'lucide-react';
+import {
+  CheckCircle2,
+  Download,
+  FileText,
+  Loader2,
+  RotateCcw,
+  UploadCloud,
+} from 'lucide-react';
 import { useMemo, useState, type ChangeEvent, type FormEvent } from 'react';
+import { useCategories, type Category } from '../hooks/useCategories';
 import { apiBaseUrl } from '../lib/api';
 import { cn } from '../lib/utils';
 
@@ -17,6 +25,14 @@ type PdfPreviewRow = {
   matchedAmount: string | null;
   matchedDate: string | null;
   matchReason: string;
+  reviewed?: boolean;
+};
+
+type ReviewPreviewRow = PdfPreviewRow & {
+  originalDescription: string;
+  originalSuggestedCategory: string | null;
+  originalSuggestedSubcategory: string | null;
+  originalReviewKey: string;
 };
 
 type PdfPreviewResponse = {
@@ -42,15 +58,27 @@ const csvHeaders: Array<keyof PdfPreviewRow> = [
 
 export function PdfImportPage() {
   const [file, setFile] = useState<File | null>(null);
-  const [rows, setRows] = useState<PdfPreviewRow[]>([]);
+  const [rows, setRows] = useState<ReviewPreviewRow[]>([]);
   const [textPreview, setTextPreview] = useState('');
   const [extractedTextLength, setExtractedTextLength] = useState(0);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [applyToMatchingRows, setApplyToMatchingRows] = useState(true);
+  const categoriesQuery = useCategories();
   const suggestionCount = useMemo(
     () => rows.filter((row) => row.suggestedCategory !== null).length,
     [rows],
   );
+  const matchingRowCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+
+    for (const row of rows) {
+      const key = row.originalReviewKey;
+      counts.set(key, (counts.get(key) ?? 0) + 1);
+    }
+
+    return rows.map((row) => counts.get(row.originalReviewKey) ?? 1);
+  }, [rows]);
 
   function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
     const selectedFile = event.target.files?.[0] ?? null;
@@ -94,7 +122,7 @@ export function PdfImportPage() {
       }
 
       const preview = (await response.json()) as PdfPreviewResponse;
-      setRows(preview.rows);
+      setRows(preview.rows.map(toReviewPreviewRow));
       setTextPreview(preview.textPreview);
       setExtractedTextLength(preview.extractedTextLength);
     } catch (error) {
@@ -117,6 +145,46 @@ export function PdfImportPage() {
     link.download = buildDownloadName(file?.name);
     link.click();
     URL.revokeObjectURL(url);
+  }
+
+  function updateReviewRows(index: number, changes: Partial<PdfPreviewRow>) {
+    setRows((currentRows) => {
+      const targetRow = currentRows[index];
+
+      if (targetRow === undefined) {
+        return currentRows;
+      }
+
+      const targetKey = targetRow.originalReviewKey;
+
+      return currentRows.map((row, rowIndex) => {
+        const shouldUpdate = applyToMatchingRows
+          ? row.originalReviewKey === targetKey
+          : rowIndex === index;
+
+        return shouldUpdate ? { ...row, ...changes, reviewed: true } : row;
+      });
+    });
+  }
+
+  function resetReviewRows(index: number) {
+    setRows((currentRows) => {
+      const targetRow = currentRows[index];
+
+      if (targetRow === undefined) {
+        return currentRows;
+      }
+
+      const targetKey = targetRow.originalReviewKey;
+
+      return currentRows.map((row, rowIndex) => {
+        const shouldReset = applyToMatchingRows
+          ? row.originalReviewKey === targetKey
+          : rowIndex === index;
+
+        return shouldReset ? resetReviewPreviewRow(row) : row;
+      });
+    });
   }
 
   return (
@@ -224,17 +292,34 @@ export function PdfImportPage() {
               </div>
             </dl>
           </div>
+
+          <label className='flex items-start gap-3 rounded-md border border-line bg-canvas/40 p-4'>
+            <input
+              checked={applyToMatchingRows}
+              className='mt-1 size-4 accent-accent-lavender'
+              onChange={(event) => setApplyToMatchingRows(event.target.checked)}
+              type='checkbox'
+            />
+            <span>
+              <span className='block text-sm font-semibold text-ink'>
+                Apply edits to matching rows
+              </span>
+              <span className='mt-1 block text-xs font-medium leading-5 text-muted'>
+                Matches use the original concept and description from the file.
+              </span>
+            </span>
+          </label>
         </form>
 
         <div className='flex min-h-0 flex-col overflow-hidden rounded-lg border border-line bg-panel shadow-shell'>
-          <div className='grid grid-cols-[7rem_minmax(10rem,0.8fr)_minmax(16rem,1.4fr)_7rem_6rem_minmax(11rem,0.9fr)_7rem_minmax(14rem,1fr)] gap-4 border-b border-line px-5 py-3 text-xs font-bold uppercase tracking-[0.14em] text-muted'>
+          <div className='grid grid-cols-[7rem_minmax(10rem,0.8fr)_minmax(16rem,1.4fr)_7rem_6rem_minmax(15rem,1fr)_7rem_minmax(14rem,1fr)] gap-4 border-b border-line px-5 py-3 text-xs font-bold uppercase tracking-[0.14em] text-muted'>
             <span>Date</span>
             <span>Concept</span>
             <span>Description</span>
             <span>Amount</span>
             <span>Type</span>
-            <span>Suggestion</span>
-            <span>Score</span>
+            <span>Category</span>
+            <span>Status</span>
             <span>Evidence</span>
           </div>
 
@@ -249,7 +334,16 @@ export function PdfImportPage() {
             ) : (
               <div className='divide-y divide-line'>
                 {rows.map((row, index) => (
-                  <PreviewRow key={`${row.date}-${row.amount}-${index}`} row={row} />
+                  <PreviewRow
+                    key={`${row.date}-${row.amount}-${index}`}
+                    categories={categoriesQuery.data ?? []}
+                    applyToMatchingRows={applyToMatchingRows}
+                    index={index}
+                    matchingCount={matchingRowCounts[index] ?? 1}
+                    row={row}
+                    onChange={updateReviewRows}
+                    onReset={resetReviewRows}
+                  />
                 ))}
               </div>
             )}
@@ -299,22 +393,64 @@ function EmptyPreviewState({ textPreview }: { textPreview: string }) {
   );
 }
 
-function PreviewRow({ row }: { row: PdfPreviewRow }) {
-  const suggestion = row.suggestedCategory
-    ? row.suggestedSubcategory
-      ? `${row.suggestedCategory} / ${row.suggestedSubcategory}`
-      : row.suggestedCategory
-    : 'Review manually';
+function PreviewRow({
+  applyToMatchingRows,
+  categories,
+  index,
+  matchingCount,
+  row,
+  onChange,
+  onReset,
+}: {
+  applyToMatchingRows: boolean;
+  categories: Category[];
+  index: number;
+  matchingCount: number;
+  row: ReviewPreviewRow;
+  onChange: (index: number, changes: Partial<PdfPreviewRow>) => void;
+  onReset: (index: number) => void;
+}) {
+  const selectedCategory = categories.find(
+    (category) => category.name === row.suggestedCategory,
+  );
+  const subcategories = selectedCategory?.subcategories ?? [];
+
+  function updateCategory(categoryName: string) {
+    onChange(index, {
+      suggestedCategory: categoryName === '' ? null : categoryName,
+      suggestedSubcategory: null,
+    });
+  }
 
   return (
-    <div className='grid min-w-[1220px] grid-cols-[7rem_minmax(10rem,0.8fr)_minmax(16rem,1.4fr)_7rem_6rem_minmax(11rem,0.9fr)_7rem_minmax(14rem,1fr)] gap-4 px-5 py-4 text-sm'>
+    <div className='grid min-w-[1320px] grid-cols-[7rem_minmax(10rem,0.8fr)_minmax(16rem,1.4fr)_7rem_6rem_minmax(15rem,1fr)_7rem_minmax(14rem,1fr)] gap-4 px-5 py-4 text-sm'>
       <span className='font-medium text-muted-strong'>{row.date}</span>
       <span className='min-w-0 text-muted-strong'>
         <span className='line-clamp-2'>{row.concept ?? '-'}</span>
+        {matchingCount > 1 ? (
+          <span className='mt-1 block text-xs font-semibold text-accent-lavender'>
+            {applyToMatchingRows
+              ? `Updates ${matchingCount} matching rows`
+              : `${matchingCount} matching rows`}
+          </span>
+        ) : null}
       </span>
-      <span className='min-w-0 text-ink'>
-        <span className='line-clamp-2'>{row.description}</span>
-      </span>
+      <label className='min-w-0'>
+        <span className='sr-only'>Description</span>
+        <textarea
+          className='min-h-16 w-full resize-y rounded-md border border-line bg-panel-raised px-3 py-2 text-sm font-medium leading-5 text-ink outline-none transition focus:border-accent-lavender focus:ring-2 focus:ring-accent-lavender/25'
+          value={row.description}
+          onChange={(event) =>
+            onChange(index, { description: event.target.value })
+          }
+        />
+        {row.reviewed === true &&
+        row.description !== row.originalDescription ? (
+          <span className='mt-1 block line-clamp-2 text-xs font-medium text-muted'>
+            Original: {row.originalDescription}
+          </span>
+        ) : null}
+      </label>
       <span className='font-semibold text-ink'>{row.amount}</span>
       <span
         className={cn(
@@ -324,28 +460,88 @@ function PreviewRow({ row }: { row: PdfPreviewRow }) {
       >
         {row.type}
       </span>
-      <span
-        className={cn(
-          'font-semibold',
-          row.suggestedCategory ? 'text-accent-green' : 'text-muted',
-        )}
-      >
-        {suggestion}
+      <span className='grid min-w-0 gap-2'>
+        <label>
+          <span className='sr-only'>Category</span>
+          <select
+            className={cn(
+              'h-9 w-full rounded-md border border-line bg-panel-raised px-3 text-sm font-semibold outline-none transition focus:border-accent-lavender focus:ring-2 focus:ring-accent-lavender/25',
+              row.suggestedCategory ? 'text-accent-green' : 'text-muted',
+            )}
+            value={row.suggestedCategory ?? ''}
+            onChange={(event) => updateCategory(event.target.value)}
+          >
+            <option value=''>None</option>
+            {categories.map((category) => (
+              <option key={category.id} value={category.name}>
+                {category.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          <span className='sr-only'>Subcategory</span>
+          <select
+            className='h-9 w-full rounded-md border border-line bg-panel-raised px-3 text-sm font-medium text-muted-strong outline-none transition focus:border-accent-lavender focus:ring-2 focus:ring-accent-lavender/25 disabled:cursor-not-allowed disabled:opacity-50'
+            disabled={row.suggestedCategory === null}
+            value={row.suggestedSubcategory ?? ''}
+            onChange={(event) =>
+              onChange(index, {
+                suggestedSubcategory:
+                  event.target.value === '' ? null : event.target.value,
+              })
+            }
+          >
+            <option value=''>None</option>
+            {subcategories.map((subcategory) => (
+              <option key={subcategory.id} value={subcategory.name}>
+                {subcategory.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        {row.reviewed === true &&
+        (row.suggestedCategory !== row.originalSuggestedCategory ||
+          row.suggestedSubcategory !== row.originalSuggestedSubcategory) ? (
+          <span className='text-xs font-medium leading-5 text-muted'>
+            Original: {formatCategorySuggestion(
+              row.originalSuggestedCategory,
+              row.originalSuggestedSubcategory,
+            )}
+          </span>
+        ) : null}
       </span>
       <span>
-        <span
-          className={cn(
-            'inline-flex h-6 items-center rounded-full px-2 text-xs font-bold',
-            row.confidence >= 70 &&
-              'bg-accent-green/15 text-accent-green',
-            row.confidence >= 55 &&
-              row.confidence < 70 &&
-              'bg-accent-amber/15 text-accent-amber',
-            row.confidence < 55 && 'bg-panel-raised text-muted',
-          )}
-        >
-          {row.confidence}%
-        </span>
+        {row.reviewed === true ? (
+          <span className='grid gap-2'>
+            <span className='inline-flex h-7 w-fit items-center gap-1.5 rounded-full bg-accent-green/15 px-2.5 text-xs font-bold text-accent-green'>
+              <CheckCircle2 className='size-4' aria-hidden='true' />
+              Reviewed
+            </span>
+            <button
+              className='inline-flex h-8 w-fit items-center gap-1.5 rounded-md border border-line bg-panel-raised px-2.5 text-xs font-semibold text-muted-strong transition hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-lavender'
+              onClick={() => onReset(index)}
+              type='button'
+            >
+              <RotateCcw className='size-3.5' aria-hidden='true' />
+              Reset
+            </button>
+          </span>
+        ) : (
+          <span
+            className={cn(
+              'inline-flex h-6 items-center rounded-full px-2 text-xs font-bold',
+              row.confidence >= 70 &&
+                'bg-accent-green/15 text-accent-green',
+              row.confidence >= 55 &&
+                row.confidence < 70 &&
+                'bg-accent-amber/15 text-accent-amber',
+              row.confidence < 55 && 'bg-panel-raised text-muted',
+            )}
+          >
+            {row.confidence}%
+          </span>
+        )}
       </span>
       <span className='min-w-0 text-muted'>
         <span className='line-clamp-2'>
@@ -356,6 +552,37 @@ function PreviewRow({ row }: { row: PdfPreviewRow }) {
       </span>
     </div>
   );
+}
+
+function toReviewPreviewRow(row: PdfPreviewRow): ReviewPreviewRow {
+  return {
+    ...row,
+    originalDescription: row.description,
+    originalSuggestedCategory: row.suggestedCategory,
+    originalSuggestedSubcategory: row.suggestedSubcategory,
+    originalReviewKey: buildReviewRowKey(row),
+  };
+}
+
+function resetReviewPreviewRow(row: ReviewPreviewRow): ReviewPreviewRow {
+  return {
+    ...row,
+    description: row.originalDescription,
+    suggestedCategory: row.originalSuggestedCategory,
+    suggestedSubcategory: row.originalSuggestedSubcategory,
+    reviewed: undefined,
+  };
+}
+
+function formatCategorySuggestion(
+  category: string | null,
+  subcategory: string | null,
+): string {
+  if (category === null) {
+    return 'None';
+  }
+
+  return subcategory === null ? category : `${category} / ${subcategory}`;
 }
 
 function toReviewCsv(rows: PdfPreviewRow[]): string {
@@ -375,6 +602,16 @@ function escapeCsvValue(value: PdfPreviewRow[keyof PdfPreviewRow]): string {
   }
 
   return `"${text.split('"').join('""')}"`;
+}
+
+function buildReviewRowKey(row: PdfPreviewRow): string {
+  return `${normalizeReviewText(row.concept ?? '')}::${normalizeReviewText(
+    row.description,
+  )}`;
+}
+
+function normalizeReviewText(value: string): string {
+  return value.replace(/\s+/g, ' ').trim().toLocaleLowerCase();
 }
 
 function buildDownloadName(fileName: string | undefined): string {
