@@ -6,7 +6,9 @@ import { cn } from '../lib/utils';
 type PdfPreviewRow = {
   date: string;
   description: string;
+  concept?: string;
   amount: string;
+  type: 'expense' | 'income';
   rawText: string;
   suggestedCategory: string | null;
   suggestedSubcategory: string | null;
@@ -28,6 +30,7 @@ const csvHeaders: Array<keyof PdfPreviewRow> = [
   'date',
   'description',
   'amount',
+  'type',
   'suggestedCategory',
   'suggestedSubcategory',
   'confidence',
@@ -63,7 +66,7 @@ export function PdfImportPage() {
     event.preventDefault();
 
     if (!file) {
-      setErrorMessage('Choose a PDF statement first.');
+      setErrorMessage('Choose a PDF or Excel file first.');
       return;
     }
 
@@ -71,11 +74,11 @@ export function PdfImportPage() {
     setErrorMessage(null);
 
     try {
-      const response = await fetch(`${apiBaseUrl}/api/imports/pdf-preview`, {
+      const response = await fetch(`${apiBaseUrl}${previewPathForFile(file)}`, {
         body: file,
         headers: {
           Accept: 'application/json',
-          'Content-Type': 'application/pdf',
+          'Content-Type': contentTypeForFile(file),
         },
         method: 'POST',
       });
@@ -124,10 +127,10 @@ export function PdfImportPage() {
             Hidden tool
           </span>
           <h1 className='mt-3 text-3xl font-semibold tracking-normal text-ink md:text-4xl'>
-            PDF import assistant
+            Import assistant
           </h1>
           <p className='mt-3 max-w-3xl text-sm font-medium leading-6 text-muted-strong'>
-            Upload a statement, extract noisy transaction rows, and compare
+            Upload a statement, extract transaction rows, and compare
             them with categorized history before exporting a review CSV.
           </p>
         </div>
@@ -158,14 +161,14 @@ export function PdfImportPage() {
               aria-hidden='true'
             />
             <span className='text-sm font-semibold text-ink'>
-              {file ? file.name : 'Choose PDF statement'}
+              {file ? file.name : 'Choose PDF or Excel file'}
             </span>
             <span className='mt-2 text-xs font-medium leading-5 text-muted'>
               The preview reads the file in memory only. Nothing is imported or
               saved.
             </span>
             <input
-              accept='application/pdf,.pdf'
+              accept='application/pdf,.pdf,.xls,.xlsx,.xlsm'
               className='sr-only'
               id='pdf-import-file'
               onChange={handleFileChange}
@@ -224,10 +227,12 @@ export function PdfImportPage() {
         </form>
 
         <div className='flex min-h-0 flex-col overflow-hidden rounded-lg border border-line bg-panel shadow-shell'>
-          <div className='grid grid-cols-[7rem_minmax(16rem,1.4fr)_7rem_minmax(11rem,0.9fr)_7rem_minmax(14rem,1fr)] gap-4 border-b border-line px-5 py-3 text-xs font-bold uppercase tracking-[0.14em] text-muted'>
+          <div className='grid grid-cols-[7rem_minmax(10rem,0.8fr)_minmax(16rem,1.4fr)_7rem_6rem_minmax(11rem,0.9fr)_7rem_minmax(14rem,1fr)] gap-4 border-b border-line px-5 py-3 text-xs font-bold uppercase tracking-[0.14em] text-muted'>
             <span>Date</span>
+            <span>Concept</span>
             <span>Description</span>
             <span>Amount</span>
+            <span>Type</span>
             <span>Suggestion</span>
             <span>Score</span>
             <span>Evidence</span>
@@ -237,7 +242,7 @@ export function PdfImportPage() {
             {isUploading ? (
               <div className='flex min-h-80 items-center justify-center gap-2 text-sm font-medium text-muted'>
                 <Loader2 className='size-4 animate-spin' aria-hidden='true' />
-                Reading PDF and matching history
+                Reading file and matching history
               </div>
             ) : rows.length === 0 ? (
               <EmptyPreviewState textPreview={textPreview} />
@@ -287,8 +292,8 @@ function EmptyPreviewState({ textPreview }: { textPreview: string }) {
       <FileText className='mb-4 size-10 text-muted' aria-hidden='true' />
       <p className='text-sm font-semibold text-ink'>No preview rows yet</p>
       <p className='mt-2 max-w-md text-sm leading-6 text-muted'>
-        Choose a PDF to see extracted transactions and conservative category
-        suggestions from historical data.
+        Choose a PDF or spreadsheet to see extracted transactions and
+        conservative category suggestions from historical data.
       </p>
     </div>
   );
@@ -302,12 +307,23 @@ function PreviewRow({ row }: { row: PdfPreviewRow }) {
     : 'Review manually';
 
   return (
-    <div className='grid min-w-[980px] grid-cols-[7rem_minmax(16rem,1.4fr)_7rem_minmax(11rem,0.9fr)_7rem_minmax(14rem,1fr)] gap-4 px-5 py-4 text-sm'>
+    <div className='grid min-w-[1220px] grid-cols-[7rem_minmax(10rem,0.8fr)_minmax(16rem,1.4fr)_7rem_6rem_minmax(11rem,0.9fr)_7rem_minmax(14rem,1fr)] gap-4 px-5 py-4 text-sm'>
       <span className='font-medium text-muted-strong'>{row.date}</span>
+      <span className='min-w-0 text-muted-strong'>
+        <span className='line-clamp-2'>{row.concept ?? '-'}</span>
+      </span>
       <span className='min-w-0 text-ink'>
         <span className='line-clamp-2'>{row.description}</span>
       </span>
       <span className='font-semibold text-ink'>{row.amount}</span>
+      <span
+        className={cn(
+          'font-semibold',
+          row.type === 'income' ? 'text-accent-green' : 'text-accent-rose',
+        )}
+      >
+        {row.type}
+      </span>
       <span
         className={cn(
           'font-semibold',
@@ -352,7 +368,7 @@ function toReviewCsv(rows: PdfPreviewRow[]): string {
 }
 
 function escapeCsvValue(value: PdfPreviewRow[keyof PdfPreviewRow]): string {
-  const text = value === null ? '' : String(value);
+  const text = value === null || value === undefined ? '' : String(value);
 
   if (!/[;"\n\r]/.test(text)) {
     return text;
@@ -362,7 +378,29 @@ function escapeCsvValue(value: PdfPreviewRow[keyof PdfPreviewRow]): string {
 }
 
 function buildDownloadName(fileName: string | undefined): string {
-  const baseName = fileName?.replace(/\.pdf$/i, '') || 'pdf-import-preview';
+  const baseName =
+    fileName?.replace(/\.(pdf|xls|xlsx|xlsm)$/i, '') || 'import-preview';
 
   return `${baseName}-review.csv`;
+}
+
+function previewPathForFile(file: File): string {
+  return isSpreadsheetFile(file)
+    ? '/api/imports/spreadsheet-preview'
+    : '/api/imports/pdf-preview';
+}
+
+function contentTypeForFile(file: File): string {
+  if (!isSpreadsheetFile(file)) {
+    return 'application/pdf';
+  }
+
+  return file.name.toLowerCase().endsWith('.xlsx') ||
+    file.name.toLowerCase().endsWith('.xlsm')
+    ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    : 'application/vnd.ms-excel';
+}
+
+function isSpreadsheetFile(file: File): boolean {
+  return /\.(xls|xlsx|xlsm)$/i.test(file.name);
 }

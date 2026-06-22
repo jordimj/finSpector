@@ -10,11 +10,11 @@ export function App() {
   return (
     <AppShell>
       <Routes>
-        <Route path="/" element={<DashboardPage />} />
-        <Route path="/analytics" element={<AnalyticsPage />} />
-        <Route path="/projection" element={<ProjectionPage />} />
-        <Route path="/transactions" element={<TransactionsPage />} />
-        <Route path="/tools/pdf-import" element={<PdfImportPage />} />
+        <Route path='/' element={<DashboardPage />} />
+        <Route path='/analytics' element={<AnalyticsPage />} />
+        <Route path='/projection' element={<ProjectionPage />} />
+        <Route path='/transactions' element={<TransactionsPage />} />
+        <Route path='/tools/import-assistant' element={<PdfImportPage />} />
       </Routes>
     </AppShell>
   );

@@ -14,7 +14,9 @@ const maxTextPreviewLines = 80;
 export type ExtractedPdfTransaction = {
   date: string;
   description: string;
+  concept?: string;
   amount: string;
+  type: TransactionType;
   rawText: string;
 };
 
@@ -289,6 +291,7 @@ function parseTransactionBlock(
     date,
     description,
     amount,
+    type: inferTransactionTypeFromAmountText(amountMatch.text),
     rawText: block.join('\n'),
   };
 }
@@ -330,6 +333,10 @@ function selectTransactionAmount(matches: AmountMatch[]): AmountMatch | null {
   const signedMatch = signedMatches.at(-1);
 
   return signedMatch ?? matches.at(-1) ?? null;
+}
+
+function inferTransactionTypeFromAmountText(value: string): TransactionType {
+  return /[\-−]/.test(value) ? 'expense' : 'income';
 }
 
 function normalizePdfDate(value: string): string | null {

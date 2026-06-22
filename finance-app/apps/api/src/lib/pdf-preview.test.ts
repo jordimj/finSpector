@@ -46,10 +46,12 @@ describe('parseTransactionsFromPdfText', () => {
       date: '2025-04-08',
       description: 'BONPREU MARKET loyalty text carried onto next line',
       amount: '17.25',
+      type: 'income',
       rawText: '08/04/2025 BONPREU MARKET 17,25 EUR\nloyalty text carried onto next line',
     });
     assert.equal(rows[1]?.date, '2025-04-09');
     assert.equal(rows[1]?.amount, '10.99');
+    assert.equal(rows[1]?.type, 'expense');
   });
 
   it('extracts transaction rows split across multiple lines', () => {
@@ -71,6 +73,7 @@ describe('parseTransactionsFromPdfText', () => {
       date: '2025-04-10',
       description: 'COMPRA TARGETA LIDL BARCELONA',
       amount: '47.29',
+      type: 'expense',
       rawText:
         '10/04/2025\n11/04/2025\nCOMPRA TARGETA\nLIDL BARCELONA\n-47,29 EUR\n1.234,56 EUR',
     });
@@ -78,6 +81,7 @@ describe('parseTransactionsFromPdfText', () => {
       date: '2025-04-12',
       description: 'BONPREU MARKET',
       amount: '17.25',
+      type: 'income',
       rawText: '12/04/2025\nBONPREU MARKET\n17,25 EUR',
     });
   });
@@ -90,6 +94,7 @@ describe('suggestTransactionCategory', () => {
         date: '2024-02-01',
         description: 'Bonpreu supermarket',
         amount: '17.25',
+        type: 'income',
         rawText: 'Bonpreu supermarket',
       },
       historicalRows,
@@ -107,6 +112,7 @@ describe('suggestTransactionCategory', () => {
         date: '2024-02-01',
         description: 'Completely unknown merchant',
         amount: '17.25',
+        type: 'income',
         rawText: 'Completely unknown merchant',
       },
       historicalRows,
