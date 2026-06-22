@@ -64,6 +64,16 @@ It currently demonstrates the future Excel import pipeline with a simple CSV sou
 
 When you replace CSV with real Excel files, customize `packages/importer/src/parse-excel.ts` to map bank-specific columns into `RawTransactionRow`. The rest of the pipeline can stay mostly the same.
 
+## Hidden PDF Import Assistant
+
+The app includes a low-visibility utility route at:
+
+```text
+/tools/pdf-import
+```
+
+Upload a bank PDF there to preview extracted rows, fuzzy category suggestions from historical transactions, and a downloadable review CSV. It does not import, persist, or save the uploaded PDF.
+
 ## Analytics
 
 ```bash
