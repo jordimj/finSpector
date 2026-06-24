@@ -8,6 +8,7 @@ import { DashboardInsightCard } from '../components/DashboardInsightCard';
 import { LastMonthExpensesCard } from '../components/LastMonthExpensesCard';
 import { RecentTransactionsCard } from '../components/RecentTransactionsCard';
 import { SummaryTile } from '../components/SummaryTile';
+import { UpcomingPaymentsCard } from '../components/UpcomingPaymentsCard';
 import { useLastMonthExpenses } from '../hooks/useLastMonthExpenses';
 import { useRecentTransactions } from '../hooks/useRecentTransactions';
 import { formatTransactionCurrency } from '../utils';
@@ -50,6 +51,10 @@ export function DashboardPage() {
           data={lastMonthExpenses.data}
           isLoading={lastMonthExpenses.isLoading}
         />
+      </div>
+
+      <div className='mt-8'>
+        <UpcomingPaymentsCard />
       </div>
 
       <div className='mt-8'>

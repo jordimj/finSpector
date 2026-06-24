@@ -1,5 +1,6 @@
 import {
   Banknote,
+  CalendarClock,
   CircleAlert,
   PiggyBank,
   ReceiptText,
@@ -7,10 +8,13 @@ import {
   TrendingUp,
 } from 'lucide-react';
 import { useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import { IncomeVsExpensesChart } from '../components/IncomeVsExpensesChart';
 import { ProjectionAssumptionsPanel } from '../components/ProjectionAssumptionsPanel';
 import { SummaryTile } from '../components/SummaryTile';
+import { useUpcomingPaymentReminders } from '../hooks/paymentReminders/useUpcomingPaymentReminders';
 import { useProjection } from '../hooks/useProjection';
+import type { ProjectionMonth } from '../hooks/useProjection';
 import { useProjectionSettings } from '../hooks/useProjectionSettings';
 import { formatCurrency, formatPercentage } from '../utils';
 import { applyProjectionScenario } from '../utils/projectionScenario';
@@ -182,6 +186,119 @@ export function ProjectionPage() {
           settings={projectionSettings}
         />
       </div>
+
+      <ScheduledPaymentsPanel
+        isProjectionLoading={projection.isLoading}
+        months={data?.months ?? []}
+      />
+    </section>
+  );
+}
+
+function ScheduledPaymentsPanel({
+  isProjectionLoading,
+  months,
+}: {
+  isProjectionLoading: boolean;
+  months: ProjectionMonth[];
+}) {
+  const upcomingPayments = useUpcomingPaymentReminders(365);
+  const scheduledRows = useMemo(() => {
+    const monthLabels = new Map(
+      months.map((month) => [month.month, month.label]),
+    );
+    const grouped = new Map<
+      string,
+      {
+        amount: number;
+        count: number;
+        label: string;
+      }
+    >();
+
+    for (const occurrence of upcomingPayments.data?.occurrences ?? []) {
+      if (occurrence.state === 'paid' || occurrence.state === 'skipped') {
+        continue;
+      }
+
+      const monthKey = occurrence.dueDate.slice(0, 7);
+      const label = monthLabels.get(monthKey);
+
+      if (label === undefined) {
+        continue;
+      }
+
+      const current = grouped.get(monthKey) ?? {
+        amount: 0,
+        count: 0,
+        label,
+      };
+
+      grouped.set(monthKey, {
+        amount: current.amount + Number(occurrence.amount),
+        count: current.count + 1,
+        label: current.label,
+      });
+    }
+
+    return Array.from(grouped.entries())
+      .map(([month, row]) => ({
+        month,
+        ...row,
+      }))
+      .sort((left, right) => left.month.localeCompare(right.month));
+  }, [months, upcomingPayments.data?.occurrences]);
+
+  return (
+    <section className='mt-8 rounded-lg border border-line bg-panel p-5 shadow-shell'>
+      <div className='mb-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between'>
+        <div>
+          <h2 className='text-xl font-semibold tracking-normal text-ink'>
+            Scheduled payments
+          </h2>
+          <p className='mt-1 text-sm font-medium text-muted'>
+            Reminder dates shown alongside projection months
+          </p>
+        </div>
+        <Link
+          to='/upcoming'
+          className='inline-flex h-9 items-center justify-center gap-2 rounded-md border border-line bg-panel-raised px-3 text-sm font-semibold text-muted-strong transition hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-lavender'
+        >
+          <CalendarClock className='size-4' aria-hidden='true' />
+          Upcoming
+        </Link>
+      </div>
+
+      {isProjectionLoading || upcomingPayments.isLoading ? (
+        <p className='rounded-md bg-canvas/70 px-3 py-3 text-sm font-medium text-muted-strong'>
+          Loading scheduled payments.
+        </p>
+      ) : upcomingPayments.isError ? (
+        <p className='rounded-md bg-accent-rose/10 px-3 py-3 text-sm font-medium text-muted-strong'>
+          Scheduled payments are unavailable.
+        </p>
+      ) : scheduledRows.length === 0 ? (
+        <p className='rounded-md bg-canvas/70 px-3 py-3 text-sm font-medium text-muted-strong'>
+          No confirmed payment reminders land inside this projection window.
+        </p>
+      ) : (
+        <div className='grid gap-3 md:grid-cols-2 xl:grid-cols-4'>
+          {scheduledRows.map((row) => (
+            <div
+              key={row.month}
+              className='rounded-md border border-line bg-canvas/70 p-4'
+            >
+              <p className='text-sm font-semibold text-ink'>{row.label}</p>
+              <p className='mt-3 text-xl font-bold tabular-nums text-ink'>
+                {formatCurrency(row.amount)}
+              </p>
+              <p className='mt-1 text-sm font-medium text-muted'>
+                {row.count} reminder{row.count === 1 ? '' : 's'}
+              </p>
+            </div>
+          ))}
+        </div>
+      )}
     </section>
   );
 }

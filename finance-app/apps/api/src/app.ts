@@ -4,6 +4,7 @@ import sensible from '@fastify/sensible';
 import Fastify, { type FastifyError, type FastifyInstance } from 'fastify';
 import { registerCategoryRoutes } from './routes/categories.js';
 import { registerImportRoutes } from './routes/imports.js';
+import { registerPaymentReminderRoutes } from './routes/payment-reminders.js';
 import { registerReportRoutes } from './routes/reports.js';
 import { registerTransactionRoutes } from './routes/transactions.js';
 
@@ -26,6 +27,9 @@ export function buildApp(): FastifyInstance {
 
   app.register(registerCategoryRoutes, { prefix: '/api/categories' });
   app.register(registerImportRoutes, { prefix: '/api/imports' });
+  app.register(registerPaymentReminderRoutes, {
+    prefix: '/api/payment-reminders',
+  });
   app.register(registerTransactionRoutes, { prefix: '/api/transactions' });
   app.register(registerReportRoutes, { prefix: '/api/reports' });
 

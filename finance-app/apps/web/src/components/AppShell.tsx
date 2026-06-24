@@ -1,5 +1,6 @@
 import {
   BarChart3,
+  CalendarClock,
   Check,
   ChevronDown,
   CircleDollarSign,
@@ -40,6 +41,11 @@ const navigation = [
     to: '/projection',
     label: 'Projection',
     icon: LineChart,
+  },
+  {
+    to: '/upcoming',
+    label: 'Upcoming',
+    icon: CalendarClock,
   },
   {
     to: '/transactions',

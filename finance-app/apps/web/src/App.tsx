@@ -5,6 +5,7 @@ import { DashboardPage } from './pages/DashboardPage';
 import { ImportPage } from './pages/ImportPage';
 import { ProjectionPage } from './pages/ProjectionPage';
 import { TransactionsPage } from './pages/TransactionsPage';
+import { UpcomingPage } from './pages/UpcomingPage';
 
 export function App() {
   return (
@@ -13,6 +14,7 @@ export function App() {
         <Route path='/' element={<DashboardPage />} />
         <Route path='/analytics' element={<AnalyticsPage />} />
         <Route path='/projection' element={<ProjectionPage />} />
+        <Route path='/upcoming' element={<UpcomingPage />} />
         <Route path='/transactions' element={<TransactionsPage />} />
         <Route path='/tools/import-assistant' element={<ImportPage />} />
       </Routes>
