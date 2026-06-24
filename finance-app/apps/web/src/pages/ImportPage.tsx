@@ -1,4 +1,5 @@
 import {
+  Ban,
   CheckCircle2,
   Download,
   FileText,
@@ -26,6 +27,7 @@ type ImportPreviewRow = {
   matchedDate: string | null;
   matchReason: string;
   reviewed?: boolean;
+  skipped?: boolean;
 };
 
 type ImportReviewRow = ImportPreviewRow & {
@@ -42,18 +44,24 @@ type ImportPreviewResponse = {
   textPreview: string;
 };
 
-const csvHeaders: Array<keyof ImportPreviewRow> = [
+type ExportCsvRow = {
+  date: string;
+  category: string | null;
+  subcategory: string | null;
+  description: string;
+  amount: string;
+  type: ImportPreviewRow['type'];
+  bankConcept: string;
+};
+
+const csvHeaders: Array<keyof ExportCsvRow> = [
   'date',
+  'category',
+  'subcategory',
   'description',
   'amount',
   'type',
-  'suggestedCategory',
-  'suggestedSubcategory',
-  'confidence',
-  'matchedDescription',
-  'matchedAmount',
-  'matchedDate',
-  'matchReason',
+  'bankConcept',
 ];
 
 export function ImportPage() {
@@ -67,6 +75,16 @@ export function ImportPage() {
   const categoriesQuery = useCategories();
   const suggestionCount = useMemo(
     () => rows.filter((row) => row.suggestedCategory !== null).length,
+    [rows],
+  );
+  const unreviewedCount = useMemo(
+    () =>
+      rows.filter((row) => row.reviewed !== true && row.skipped !== true)
+        .length,
+    [rows],
+  );
+  const skippedCount = useMemo(
+    () => rows.filter((row) => row.skipped === true).length,
     [rows],
   );
   const matchingRowCounts = useMemo(() => {
@@ -190,6 +208,14 @@ export function ImportPage() {
     });
   }
 
+  function toggleSkippedRow(index: number) {
+    setRows((currentRows) =>
+      currentRows.map((row, rowIndex) =>
+        rowIndex === index ? { ...row, skipped: row.skipped !== true } : row,
+      ),
+    );
+  }
+
   return (
     <section className='mx-auto flex h-full min-h-0 max-h-screen max-w-[1600px] flex-col'>
       <div className='mb-7 flex shrink-0 flex-col gap-4 lg:flex-row lg:items-end lg:justify-between'>
@@ -285,12 +311,31 @@ export function ImportPage() {
                   {suggestionCount}
                 </dd>
               </div>
+              <div>
+                <dt className='text-xs font-bold uppercase tracking-[0.14em] text-muted'>
+                  Unreviewed
+                </dt>
+                <dd className='mt-1 text-lg font-semibold text-ink'>
+                  {unreviewedCount}
+                </dd>
+              </div>
+              <div>
+                <dt className='text-xs font-bold uppercase tracking-[0.14em] text-muted'>
+                  Skipped
+                </dt>
+                <dd className='mt-1 text-lg font-semibold text-ink'>
+                  {skippedCount}
+                </dd>
+              </div>
               <div className='col-span-2'>
                 <dt className='text-xs font-bold uppercase tracking-[0.14em] text-muted'>
-                  Text chars
+                  Extracted text chars
                 </dt>
                 <dd className='mt-1 text-lg font-semibold text-ink'>
                   {extractedTextLength}
+                </dd>
+                <dd className='mt-1 text-xs font-medium leading-5 text-muted'>
+                  Raw text length before row parsing.
                 </dd>
               </div>
             </dl>
@@ -315,7 +360,7 @@ export function ImportPage() {
         </form>
 
         <div className='flex min-h-0 flex-col overflow-hidden rounded-lg border border-line bg-panel shadow-shell'>
-          <div className='grid grid-cols-[7rem_minmax(10rem,0.8fr)_minmax(16rem,1.4fr)_7rem_6rem_minmax(15rem,1fr)_7rem_minmax(14rem,1fr)] gap-4 border-b border-line px-5 py-3 text-xs font-bold uppercase tracking-[0.14em] text-muted'>
+          <div className='grid grid-cols-[7rem_minmax(10rem,0.8fr)_minmax(16rem,1.4fr)_7rem_6rem_minmax(15rem,1fr)_7rem_minmax(14rem,1fr)_3rem] gap-4 border-b border-line px-5 py-3 text-xs font-bold uppercase tracking-[0.14em] text-muted'>
             <span>Date</span>
             <span>Concept</span>
             <span>Description</span>
@@ -324,6 +369,7 @@ export function ImportPage() {
             <span>Category</span>
             <span>Status</span>
             <span>Evidence</span>
+            <span className='sr-only'>Skip</span>
           </div>
 
           <div className='min-h-0 flex-1 overflow-auto'>
@@ -346,6 +392,7 @@ export function ImportPage() {
                     row={row}
                     onChange={updateReviewRows}
                     onReset={resetReviewRows}
+                    onToggleSkipped={toggleSkippedRow}
                   />
                 ))}
               </div>
@@ -404,6 +451,7 @@ function PreviewRow({
   row,
   onChange,
   onReset,
+  onToggleSkipped,
 }: {
   applyToMatchingRows: boolean;
   categories: Category[];
@@ -412,7 +460,9 @@ function PreviewRow({
   row: ImportReviewRow;
   onChange: (index: number, changes: Partial<ImportPreviewRow>) => void;
   onReset: (index: number) => void;
+  onToggleSkipped: (index: number) => void;
 }) {
+  const isSkipped = row.skipped === true;
   const selectedCategory = categories.find(
     (category) => category.name === row.suggestedCategory,
   );
@@ -426,7 +476,12 @@ function PreviewRow({
   }
 
   return (
-    <div className='grid min-w-[1320px] grid-cols-[7rem_minmax(10rem,0.8fr)_minmax(16rem,1.4fr)_7rem_6rem_minmax(15rem,1fr)_7rem_minmax(14rem,1fr)] gap-4 px-5 py-4 text-sm'>
+    <div
+      className={cn(
+        'grid min-w-[1380px] grid-cols-[7rem_minmax(10rem,0.8fr)_minmax(16rem,1.4fr)_7rem_6rem_minmax(15rem,1fr)_7rem_minmax(14rem,1fr)_3rem] gap-4 px-5 py-4 text-sm transition',
+        isSkipped && 'bg-panel-raised/35 opacity-55',
+      )}
+    >
       <span className='font-medium text-muted-strong'>{row.date}</span>
       <span className='min-w-0 text-muted-strong'>
         <span className='line-clamp-2'>{row.concept ?? '-'}</span>
@@ -441,7 +496,8 @@ function PreviewRow({
       <label className='min-w-0'>
         <span className='sr-only'>Description</span>
         <textarea
-          className='min-h-16 w-full resize-y rounded-md border border-line bg-panel-raised px-3 py-2 text-sm font-medium leading-5 text-ink outline-none transition focus:border-accent-lavender focus:ring-2 focus:ring-accent-lavender/25'
+          className='min-h-16 w-full resize-y rounded-md border border-line bg-panel-raised px-3 py-2 text-sm font-medium leading-5 text-ink outline-none transition focus:border-accent-lavender focus:ring-2 focus:ring-accent-lavender/25 disabled:cursor-not-allowed disabled:opacity-70'
+          disabled={isSkipped}
           value={row.description}
           onChange={(event) =>
             onChange(index, { description: event.target.value })
@@ -468,9 +524,10 @@ function PreviewRow({
           <span className='sr-only'>Category</span>
           <select
             className={cn(
-              'h-9 w-full rounded-md border border-line bg-panel-raised px-3 text-sm font-semibold outline-none transition focus:border-accent-lavender focus:ring-2 focus:ring-accent-lavender/25',
+              'h-9 w-full rounded-md border border-line bg-panel-raised px-3 text-sm font-semibold outline-none transition focus:border-accent-lavender focus:ring-2 focus:ring-accent-lavender/25 disabled:cursor-not-allowed disabled:opacity-70',
               row.suggestedCategory ? 'text-accent-green' : 'text-muted',
             )}
+            disabled={isSkipped}
             value={row.suggestedCategory ?? ''}
             onChange={(event) => updateCategory(event.target.value)}
           >
@@ -486,7 +543,7 @@ function PreviewRow({
           <span className='sr-only'>Subcategory</span>
           <select
             className='h-9 w-full rounded-md border border-line bg-panel-raised px-3 text-sm font-medium text-muted-strong outline-none transition focus:border-accent-lavender focus:ring-2 focus:ring-accent-lavender/25 disabled:cursor-not-allowed disabled:opacity-50'
-            disabled={row.suggestedCategory === null}
+            disabled={isSkipped || row.suggestedCategory === null}
             value={row.suggestedSubcategory ?? ''}
             onChange={(event) =>
               onChange(index, {
@@ -515,7 +572,12 @@ function PreviewRow({
         ) : null}
       </span>
       <span>
-        {row.reviewed === true ? (
+        {isSkipped ? (
+          <span className='inline-flex h-7 w-fit items-center gap-1.5 rounded-full bg-panel-raised px-2.5 text-xs font-bold text-muted'>
+            <Ban className='size-4' aria-hidden='true' />
+            Skipped
+          </span>
+        ) : row.reviewed === true ? (
           <span className='grid gap-2'>
             <span className='inline-flex h-7 w-fit items-center gap-1.5 rounded-full bg-accent-green/15 px-2.5 text-xs font-bold text-accent-green'>
               <CheckCircle2 className='size-4' aria-hidden='true' />
@@ -553,6 +615,23 @@ function PreviewRow({
             : row.matchReason}
         </span>
       </span>
+      <span className='flex justify-end'>
+        <button
+          className={cn(
+            'inline-flex size-9 items-center justify-center rounded-md border border-line bg-panel-raised text-muted-strong transition hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-lavender',
+            isSkipped &&
+              'border-accent-rose/30 bg-accent-rose/10 text-accent-rose hover:text-accent-rose',
+          )}
+          onClick={() => onToggleSkipped(index)}
+          title={isSkipped ? 'Include this row in CSV' : 'Skip this row in CSV'}
+          type='button'
+          aria-label={
+            isSkipped ? 'Include this row in CSV' : 'Skip this row in CSV'
+          }
+        >
+          <Ban className='size-4' aria-hidden='true' />
+        </button>
+      </span>
     </div>
   );
 }
@@ -588,18 +667,63 @@ function formatCategorySuggestion(
   return subcategory === null ? category : `${category} / ${subcategory}`;
 }
 
-function toReviewCsv(rows: ImportPreviewRow[]): string {
+function toReviewCsv(rows: ImportReviewRow[]): string {
+  const exportableRows = rows
+    .filter((row) => row.skipped !== true)
+    .reverse();
+
   return [
     csvHeaders.join(';'),
-    ...rows.map((row) =>
-      csvHeaders.map((header) => escapeCsvValue(row[header])).join(';'),
-    ),
+    ...exportableRows.map((row) => {
+      const exportRow = toExportCsvRow(row);
+
+      return csvHeaders
+        .map((header) => escapeCsvValue(exportRow[header]))
+        .join(';');
+    }),
   ].join('\n');
 }
 
-function escapeCsvValue(
-  value: ImportPreviewRow[keyof ImportPreviewRow],
-): string {
+function toExportCsvRow(row: ImportReviewRow): ExportCsvRow {
+  return {
+    date: row.date,
+    category: row.suggestedCategory,
+    subcategory: row.suggestedSubcategory,
+    description: row.description,
+    amount: formatExportAmount(row.amount),
+    type: row.type,
+    bankConcept: row.originalDescription,
+  };
+}
+
+function formatExportAmount(amount: string): string {
+  const cleanAmount = amount
+    .trim()
+    .replace(/\s*(eur|€)\s*$/i, '')
+    .replace(/\s+/g, '');
+  const decimalSeparatorIndex = Math.max(
+    cleanAmount.lastIndexOf(','),
+    cleanAmount.lastIndexOf('.'),
+  );
+  const normalizedAmount =
+    decimalSeparatorIndex === -1
+      ? Number(cleanAmount)
+      : Number(
+          `${cleanAmount
+            .slice(0, decimalSeparatorIndex)
+            .replace(/[,.]/g, '')}.${cleanAmount.slice(
+            decimalSeparatorIndex + 1,
+          )}`,
+        );
+
+  if (!Number.isFinite(normalizedAmount)) {
+    return `${cleanAmount.replace('.', ',')} €`;
+  }
+
+  return `${normalizedAmount.toFixed(2).replace('.', ',')} €`;
+}
+
+function escapeCsvValue(value: ExportCsvRow[keyof ExportCsvRow]): string {
   const text = value === null || value === undefined ? '' : String(value);
 
   if (!/[;"\n\r]/.test(text)) {

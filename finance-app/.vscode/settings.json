@@ -1,0 +1,8 @@
+{
+  "conventionalCommits.scopes": [
+    "analytics",
+    "transactions",
+    "projections",
+    "importer"
+  ]
+}

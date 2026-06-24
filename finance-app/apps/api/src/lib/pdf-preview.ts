@@ -24,7 +24,8 @@ export type HistoricalTransaction = {
   id: string;
   date: string;
   amount: string;
-  description: string;
+  description: string | null;
+  bankConcept?: string | null;
   category: string;
   subcategory: string | null;
   account: ExpenseAccount | null;
@@ -51,6 +52,7 @@ type HistoricalTransactionRow = {
   date: string;
   amount: string;
   description: string | null;
+  bank_concept: string | null;
   category: string;
   subcategory: string | null;
   account: ExpenseAccount | null;
@@ -60,6 +62,17 @@ type HistoricalTransactionRow = {
 type DateMatch = {
   text: string;
   index: number;
+};
+
+type MatchSource = 'bankConcept' | 'description';
+
+type ScoredCandidate = {
+  candidate: HistoricalTransaction;
+  descriptionScore: number;
+  amountMatches: boolean;
+  confidence: number;
+  matchedText: string;
+  source: MatchSource;
 };
 
 export async function extractPdfText(buffer: Buffer): Promise<string> {
@@ -144,6 +157,7 @@ export async function fetchHistoricalTransactions(): Promise<
           expenses.date,
           expenses.amount,
           expenses.description,
+          expenses.bank_concept,
           categories.name as category,
           subcategories.name as subcategory,
           expenses.account,
@@ -159,6 +173,7 @@ export async function fetchHistoricalTransactions(): Promise<
           income.date,
           income.amount,
           income.description,
+          income.bank_concept,
           categories.name as category,
           subcategories.name as subcategory,
           income.account,
@@ -172,23 +187,31 @@ export async function fetchHistoricalTransactions(): Promise<
         to_char(date, 'YYYY-MM-DD') as date,
         amount::numeric(12, 2)::text as amount,
         description,
+        bank_concept,
         category,
         subcategory,
         account,
         type
       from transactions
-      where description is not null
-        and btrim(description) <> ''
+      where (description is not null and btrim(description) <> '')
+        or (bank_concept is not null and btrim(bank_concept) <> '')
       order by date desc;
     `,
   );
 
   return result.rows.flatMap((row) =>
-    row.description
+    row.description || row.bank_concept
       ? [
           {
-            ...row,
+            id: row.id,
+            date: row.date,
+            amount: row.amount,
             description: row.description,
+            bankConcept: row.bank_concept,
+            category: row.category,
+            subcategory: row.subcategory,
+            account: row.account,
+            type: row.type,
           },
         ]
       : [],
@@ -206,12 +229,9 @@ export function suggestTransactionCategory(
   row: ExtractedPdfTransaction,
   history: HistoricalTransaction[],
 ): PdfPreviewRow {
-  const matches = history
-    .map((candidate) => scoreCandidate(row, candidate))
-    .filter((match) => match.descriptionScore >= minimumDescriptionScore)
-    .sort((left, right) => right.confidence - left.confidence);
-
-  const bestMatch = matches[0];
+  const bestMatch =
+    findBestMatch(row, history, 'bankConcept') ??
+    findBestMatch(row, history, 'description');
 
   if (!bestMatch) {
     return {
@@ -236,7 +256,7 @@ export function suggestTransactionCategory(
       ? bestMatch.candidate.subcategory
       : null,
     confidence,
-    matchedDescription: bestMatch.candidate.description,
+    matchedDescription: bestMatch.matchedText,
     matchedAmount: bestMatch.candidate.amount,
     matchedDate: bestMatch.candidate.date,
     matchReason: buildMatchReason(bestMatch, isConfident),
@@ -484,10 +504,38 @@ function compactDescription(value: string): string {
   return value.replace(/\s+/g, ' ').replace(/\s+([,.;:])/g, '$1').trim();
 }
 
-function scoreCandidate(row: ExtractedPdfTransaction, candidate: HistoricalTransaction) {
+function findBestMatch(
+  row: ExtractedPdfTransaction,
+  history: HistoricalTransaction[],
+  source: MatchSource,
+): ScoredCandidate | null {
+  const matches = history
+    .flatMap((candidate) => {
+      const match = scoreCandidate(row, candidate, source);
+
+      return match === null ? [] : [match];
+    })
+    .filter((match) => match.descriptionScore >= minimumDescriptionScore)
+    .sort((left, right) => right.confidence - left.confidence);
+
+  return matches[0] ?? null;
+}
+
+function scoreCandidate(
+  row: ExtractedPdfTransaction,
+  candidate: HistoricalTransaction,
+  source: MatchSource,
+): ScoredCandidate | null {
+  const matchedText =
+    source === 'bankConcept' ? candidate.bankConcept : candidate.description;
+
+  if (!matchedText) {
+    return null;
+  }
+
   const descriptionScore = descriptionSimilarity(
     row.description,
-    candidate.description,
+    matchedText,
   );
   const amountMatches = row.amount === candidate.amount;
   const confidence = Math.min(
@@ -500,15 +548,18 @@ function scoreCandidate(row: ExtractedPdfTransaction, candidate: HistoricalTrans
     descriptionScore,
     amountMatches,
     confidence,
+    matchedText,
+    source,
   };
 }
 
 function buildMatchReason(
-  match: ReturnType<typeof scoreCandidate>,
+  match: ScoredCandidate,
   isConfident: boolean,
 ): string {
+  const label = match.source === 'bankConcept' ? 'bank concept' : 'description';
   const parts = [
-    `description ${Math.round(match.descriptionScore * 100)}%`,
+    `${label} ${Math.round(match.descriptionScore * 100)}%`,
   ];
 
   if (match.amountMatches) {

@@ -91,6 +91,7 @@ export const expenses = pgTable(
     date: date('date').notNull(),
     amount: numeric('amount', { precision: 12, scale: 2 }).notNull(),
     description: text('description'),
+    bankConcept: text('bank_concept'),
     categoryId: integer('category_id')
       .notNull()
       .references(() => categories.id),
@@ -132,6 +133,7 @@ export const income = pgTable(
     date: date('date').notNull(),
     amount: numeric('amount', { precision: 12, scale: 2 }).notNull(),
     description: text('description'),
+    bankConcept: text('bank_concept'),
     categoryId: integer('category_id')
       .notNull()
       .references(() => categories.id),

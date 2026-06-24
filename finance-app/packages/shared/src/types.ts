@@ -7,6 +7,7 @@ export type RawTransactionRow = {
   date: string;
   amount: string;
   description: string;
+  bankConcept?: string;
   category?: string;
   subcategory?: string;
   type?: string;
@@ -16,6 +17,7 @@ export type NormalizedTransaction = {
   date: string;
   amount: string;
   description?: string;
+  bankConcept?: string;
   categoryName: string;
   subcategoryName?: string;
   type: TransactionType;

@@ -106,6 +106,47 @@ describe('suggestTransactionCategory', () => {
     assert.ok(suggestion.confidence >= 70);
   });
 
+  it('prefers historical bank concept before falling back to description', () => {
+    const suggestion = suggestTransactionCategory(
+      {
+        date: '2025-05-03',
+        description: 'COMPRA TARGETA LIDL BARCELONA',
+        amount: '47.29',
+        type: 'expense',
+        rawText: 'COMPRA TARGETA LIDL BARCELONA',
+      },
+      [
+        {
+          id: 'expense-bank-concept',
+          date: '2025-04-12',
+          amount: '47.29',
+          description: 'Edited grocery description',
+          bankConcept: 'COMPRA TARGETA LIDL BARCELONA',
+          category: 'MENJAR',
+          subcategory: 'Supermercat',
+          account: 'shared',
+          type: 'expense',
+        },
+        {
+          id: 'expense-description',
+          date: '2025-04-13',
+          amount: '47.29',
+          description: 'COMPRA TARGETA LIDL BARCELONA',
+          bankConcept: null,
+          category: 'OTHER',
+          subcategory: null,
+          account: 'shared',
+          type: 'expense',
+        },
+      ],
+    );
+
+    assert.equal(suggestion.suggestedCategory, 'MENJAR');
+    assert.equal(suggestion.suggestedSubcategory, 'Supermercat');
+    assert.equal(suggestion.matchedDescription, 'COMPRA TARGETA LIDL BARCELONA');
+    assert.match(suggestion.matchReason, /bank concept/);
+  });
+
   it('leaves weak matches for manual review', () => {
     const suggestion = suggestTransactionCategory(
       {

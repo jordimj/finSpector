@@ -8,6 +8,7 @@ export function normalizeTransaction(row: RawTransactionRow): NormalizedTransact
     date: normalizeDate(row.date),
     amount: Math.abs(Number(amount)).toFixed(2),
     description: normalizeOptionalText(row.description),
+    bankConcept: normalizeOptionalText(row.bankConcept),
     categoryName: normalizeCategoryName(row.category),
     subcategoryName: normalizeOptionalText(row.subcategory),
     type

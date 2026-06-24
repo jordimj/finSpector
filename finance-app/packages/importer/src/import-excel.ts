@@ -115,6 +115,7 @@ async function insertIfNew(
       ? await getOrCreateSubcategory(transaction.subcategoryName, categoryId)
       : undefined;
     const description = transaction.description ?? null;
+    const bankConcept = transaction.bankConcept ?? null;
 
     const duplicate = await db.query.expenses.findFirst({
       where: and(
@@ -139,6 +140,7 @@ async function insertIfNew(
       date: transaction.date,
       amount: transaction.amount,
       description,
+      bankConcept,
       account,
       categoryId,
       subcategoryId,
@@ -153,6 +155,7 @@ async function insertIfNew(
     ? await getOrCreateSubcategory(transaction.subcategoryName, categoryId)
     : undefined;
   const description = transaction.description ?? null;
+  const bankConcept = transaction.bankConcept ?? null;
 
   const duplicate = await db.query.income.findFirst({
     where: and(
@@ -177,6 +180,7 @@ async function insertIfNew(
     date: transaction.date,
     amount: transaction.amount,
     description,
+    bankConcept,
     account,
     categoryId,
     subcategoryId,
