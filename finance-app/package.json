@@ -7,9 +7,12 @@
   "scripts": {
     "api:dev": "corepack pnpm --filter @finance/api dev",
     "api:start": "corepack pnpm --filter @finance/api start",
+    "app:lan": "corepack pnpm web:build && WEB_DIST_DIR=../../apps/web/dist HOST=0.0.0.0 corepack pnpm --filter @finance/api start",
     "web:dev": "corepack pnpm --filter @finance/web dev",
+    "web:dev:lan": "corepack pnpm --filter @finance/web dev:lan",
     "web:build": "corepack pnpm --filter @finance/web build",
     "web:preview": "corepack pnpm --filter @finance/web preview",
+    "web:preview:lan": "corepack pnpm --filter @finance/web preview:lan",
     "api:test": "corepack pnpm --filter @finance/api test",
     "db:up": "docker compose up -d",
     "db:down": "docker compose down",

@@ -3,6 +3,7 @@
     "analytics",
     "transactions",
     "projections",
-    "importer"
+    "importer",
+    "upcoming"
   ]
 }

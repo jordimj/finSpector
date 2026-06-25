@@ -7,15 +7,27 @@ import { registerImportRoutes } from './routes/imports.js';
 import { registerPaymentReminderRoutes } from './routes/payment-reminders.js';
 import { registerReportRoutes } from './routes/reports.js';
 import { registerTransactionRoutes } from './routes/transactions.js';
+import { registerWebAppRoutes } from './web-app.js';
 
-export function buildApp(): FastifyInstance {
+type BuildAppOptions = {
+  webDistDir?: string;
+};
+
+export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
   const app = Fastify({
     logger: {
       level: process.env.LOG_LEVEL ?? 'info',
     },
   });
 
-  app.register(helmet);
+  app.register(helmet, {
+    contentSecurityPolicy: {
+      directives: {
+        upgradeInsecureRequests: null,
+      },
+    },
+    strictTransportSecurity: false,
+  });
   app.register(cors, {
     origin: process.env.CORS_ORIGIN?.split(',') ?? true,
   });
@@ -32,6 +44,12 @@ export function buildApp(): FastifyInstance {
   });
   app.register(registerTransactionRoutes, { prefix: '/api/transactions' });
   app.register(registerReportRoutes, { prefix: '/api/reports' });
+
+  const webDistDir = options.webDistDir ?? process.env.WEB_DIST_DIR;
+
+  if (webDistDir) {
+    registerWebAppRoutes(app, webDistDir);
+  }
 
   app.setErrorHandler((error: FastifyError, request, reply) => {
     request.log.error(error);

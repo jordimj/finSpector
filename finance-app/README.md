@@ -74,6 +74,37 @@ The app includes a low-visibility utility route at:
 
 Upload a bank PDF or Excel spreadsheet there to preview extracted rows, fuzzy category suggestions from historical transactions, and a downloadable review CSV. It does not import, persist, or save the uploaded source file.
 
+## Local Wi-Fi Access
+
+Use this when you want to open the web app from a phone or iPad on the same home Wi-Fi network.
+
+For the built app and API on one local URL, run:
+
+```bash
+pnpm app:lan
+```
+
+The startup log prints the friendly Bonjour URL first. It will look like:
+
+```text
+http://HOSTNAME.local:4000
+```
+
+This script builds the web app, serves the compiled files from the API, and binds that single API process to your local network. The default `pnpm api:dev` script still listens on `127.0.0.1` for normal local development. If macOS asks about incoming connections, allow Node for your private home network.
+
+For hot-reload development from another device, you can still run the API and Vite separately:
+
+```bash
+pnpm api:dev
+pnpm web:dev:lan
+```
+
+Then open:
+
+```text
+http://YOUR_IP:5173
+```
+
 ## Analytics
 
 ```bash
