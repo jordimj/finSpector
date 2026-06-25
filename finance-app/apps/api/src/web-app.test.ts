@@ -39,6 +39,27 @@ describe('registerWebAppRoutes', () => {
     await app.close();
   });
 
+  it('serves web app manifests with the manifest content type', async () => {
+    const webDistDir = await createWebDist();
+    const app = Fastify({ logger: false });
+
+    registerWebAppRoutes(app, webDistDir);
+
+    const response = await app.inject({
+      method: 'GET',
+      url: '/manifest.webmanifest',
+    });
+
+    assert.equal(response.statusCode, 200);
+    assert.match(
+      response.headers['content-type']?.toString() ?? '',
+      /application\/manifest\+json/,
+    );
+    assert.equal(response.body, '{"name":"FinHunter"}');
+
+    await app.close();
+  });
+
   it('falls back to index.html for client routes', async () => {
     const webDistDir = await createWebDist();
     const app = Fastify({ logger: false });
@@ -121,6 +142,10 @@ async function createWebDist(): Promise<string> {
 
   await mkdir(assetsDir);
   await writeFile(join(webDistDir, 'index.html'), '<div id="root"></div>');
+  await writeFile(
+    join(webDistDir, 'manifest.webmanifest'),
+    '{"name":"FinHunter"}',
+  );
   await writeFile(join(assetsDir, 'index.js'), 'console.log("ok");');
 
   return webDistDir;

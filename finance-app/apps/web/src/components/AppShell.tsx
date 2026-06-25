@@ -3,7 +3,6 @@ import {
   CalendarClock,
   Check,
   ChevronDown,
-  CircleDollarSign,
   LayoutDashboard,
   LineChart,
   ReceiptText,
@@ -183,13 +182,18 @@ export function AppShell({ children }: AppShellProps) {
           <aside className='hidden w-64 shrink-0 flex-col border-r border-line bg-panel px-4 py-5 lg:flex'>
             <div>
               <div className='mb-8 flex items-center gap-3 px-2'>
-                <div className='flex size-9 items-center justify-center rounded-lg border border-line bg-panel-raised text-accent-green'>
-                  <CircleDollarSign className='size-5' aria-hidden='true' />
+                <div className='flex size-9 items-center justify-center overflow-hidden rounded-lg border border-line bg-panel-raised'>
+                  <img
+                    src='/app-icon.svg'
+                    alt=''
+                    className='size-full'
+                    aria-hidden='true'
+                  />
                 </div>
                 <div>
-                  <p className='text-sm font-semibold leading-5'>Finance</p>
+                  <p className='text-sm font-semibold leading-5'>FinHunter</p>
                   <p className='text-xs leading-5 text-muted'>
-                    Local analytics
+                    Personal finance assistant
                   </p>
                 </div>
               </div>
@@ -241,8 +245,13 @@ export function AppShell({ children }: AppShellProps) {
             <header className='sticky top-0 z-10 shrink-0 border-b border-line bg-canvas/95 px-4 py-3 backdrop-blur md:px-6'>
               <div className='flex items-center justify-between gap-3'>
                 <div className='flex items-center gap-2 lg:hidden'>
-                  <div className='flex size-9 items-center justify-center rounded-lg border border-line bg-panel-raised text-accent-green'>
-                    <CircleDollarSign className='size-5' aria-hidden='true' />
+                  <div className='flex size-9 items-center justify-center overflow-hidden rounded-lg border border-line bg-panel-raised'>
+                    <img
+                      src='/app-icon.svg'
+                      alt=''
+                      className='size-full'
+                      aria-hidden='true'
+                    />
                   </div>
                   <span className='text-sm font-semibold'>Finance</span>
                 </div>

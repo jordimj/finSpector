@@ -1,0 +1,48 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="178" y1="110" x2="834" y2="894" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#182138"/>
+      <stop offset="0.52" stop-color="#10182A"/>
+      <stop offset="1" stop-color="#080D1B"/>
+    </linearGradient>
+    <linearGradient id="flow" x1="262" y1="644" x2="778" y2="340" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#4ADE80"/>
+      <stop offset="0.48" stop-color="#67E8F9"/>
+      <stop offset="1" stop-color="#B8BEFD"/>
+    </linearGradient>
+    <linearGradient id="barA" x1="308" y1="548" x2="420" y2="736" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#67E8F9"/>
+      <stop offset="1" stop-color="#1E7493"/>
+    </linearGradient>
+    <linearGradient id="barB" x1="460" y1="434" x2="572" y2="736" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#4ADE80"/>
+      <stop offset="1" stop-color="#167548"/>
+    </linearGradient>
+    <linearGradient id="barC" x1="612" y1="364" x2="724" y2="736" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FBBF24"/>
+      <stop offset="1" stop-color="#B45309"/>
+    </linearGradient>
+    <filter id="softShadow" x="150" y="165" width="724" height="680" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse">
+      <feFlood flood-opacity="0" result="BackgroundImageFix"/>
+      <feColorMatrix in="SourceAlpha" result="hardAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0"/>
+      <feOffset dy="34"/>
+      <feGaussianBlur stdDeviation="36"/>
+      <feColorMatrix type="matrix" values="0 0 0 0 0.0156863 0 0 0 0 0.0235294 0 0 0 0 0.0509804 0 0 0 0.45 0"/>
+      <feBlend in2="BackgroundImageFix" mode="normal" result="effect1_dropShadow_1_2"/>
+      <feBlend in="SourceGraphic" in2="effect1_dropShadow_1_2" mode="normal" result="shape"/>
+    </filter>
+  </defs>
+  <rect width="1024" height="1024" fill="#080D1B"/>
+  <rect width="1024" height="1024" rx="228" fill="url(#bg)"/>
+  <rect x="72" y="72" width="880" height="880" rx="188" stroke="#27334D" stroke-width="32"/>
+  <g filter="url(#softShadow)">
+    <path d="M258 692H768" stroke="#27334D" stroke-width="34" stroke-linecap="round"/>
+    <rect x="300" y="534" width="118" height="176" rx="34" fill="url(#barA)"/>
+    <rect x="453" y="426" width="118" height="284" rx="34" fill="url(#barB)"/>
+    <rect x="606" y="340" width="118" height="370" rx="34" fill="url(#barC)"/>
+    <path d="M270 592C350 520 388 564 454 490C514 422 548 386 618 402C680 416 704 356 760 304" stroke="url(#flow)" stroke-width="64" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="270" cy="592" r="37" fill="#4ADE80" stroke="#F3F5FF" stroke-width="18"/>
+    <circle cx="760" cy="304" r="37" fill="#B8BEFD" stroke="#F3F5FF" stroke-width="18"/>
+  </g>
+  <path d="M222 266C274 214 344 186 418 186H634C708 186 778 214 830 266" stroke="#F3F5FF" stroke-opacity="0.08" stroke-width="36" stroke-linecap="round"/>
+</svg>
