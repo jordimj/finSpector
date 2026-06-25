@@ -7,7 +7,13 @@ import {
   RotateCcw,
   UploadCloud,
 } from 'lucide-react';
-import { useMemo, useState, type ChangeEvent, type FormEvent } from 'react';
+import {
+  useMemo,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type DragEvent,
+} from 'react';
 import { useCategories, type Category } from '../hooks/useCategories';
 import { apiBaseUrl } from '../lib/api';
 import { cn } from '../lib/utils';
@@ -54,6 +60,8 @@ type ExportCsvRow = {
   bankConcept: string;
 };
 
+type ExportCsvMode = 'all' | ImportPreviewRow['type'];
+
 const csvHeaders: Array<keyof ExportCsvRow> = [
   'date',
   'category',
@@ -64,14 +72,34 @@ const csvHeaders: Array<keyof ExportCsvRow> = [
   'bankConcept',
 ];
 
+const exportCsvModeOptions: Array<{
+  value: ExportCsvMode;
+  label: string;
+}> = [
+  {
+    value: 'all',
+    label: 'All rows',
+  },
+  {
+    value: 'expense',
+    label: 'Expenses only',
+  },
+  {
+    value: 'income',
+    label: 'Income only',
+  },
+];
+
 export function ImportPage() {
+  const previewRequestIdRef = useRef(0);
   const [file, setFile] = useState<File | null>(null);
   const [rows, setRows] = useState<ImportReviewRow[]>([]);
   const [textPreview, setTextPreview] = useState('');
-  const [extractedTextLength, setExtractedTextLength] = useState(0);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [isDraggingFile, setIsDraggingFile] = useState(false);
   const [applyToMatchingRows, setApplyToMatchingRows] = useState(true);
+  const [exportCsvMode, setExportCsvMode] = useState<ExportCsvMode>('all');
   const categoriesQuery = useCategories();
   const suggestionCount = useMemo(
     () => rows.filter((row) => row.suggestedCategory !== null).length,
@@ -87,6 +115,10 @@ export function ImportPage() {
     () => rows.filter((row) => row.skipped === true).length,
     [rows],
   );
+  const exportableRowCount = useMemo(
+    () => rows.filter((row) => isExportedReviewRow(row, exportCsvMode)).length,
+    [exportCsvMode, rows],
+  );
   const matchingRowCounts = useMemo(() => {
     const counts = new Map<string, number>();
 
@@ -101,33 +133,72 @@ export function ImportPage() {
   function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
     const selectedFile = event.target.files?.[0] ?? null;
 
-    setFile(selectedFile);
-    setRows([]);
-    setTextPreview('');
-    setExtractedTextLength(0);
-    setErrorMessage(null);
+    if (selectedFile === null) {
+      return;
+    }
+
+    void previewSelectedFile(selectedFile);
+    event.target.value = '';
   }
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  function handleDragOver(event: DragEvent<HTMLLabelElement>) {
     event.preventDefault();
+    event.dataTransfer.dropEffect = 'copy';
+    setIsDraggingFile(true);
+  }
 
-    if (!file) {
+  function handleDragLeave(event: DragEvent<HTMLLabelElement>) {
+    if (event.currentTarget.contains(event.relatedTarget as Node | null)) {
+      return;
+    }
+
+    setIsDraggingFile(false);
+  }
+
+  function handleDrop(event: DragEvent<HTMLLabelElement>) {
+    event.preventDefault();
+    setIsDraggingFile(false);
+
+    const selectedFile = event.dataTransfer.files[0] ?? null;
+
+    if (selectedFile === null) {
+      return;
+    }
+
+    void previewSelectedFile(selectedFile);
+  }
+
+  async function previewSelectedFile(selectedFile: File) {
+    const requestId = previewRequestIdRef.current + 1;
+    previewRequestIdRef.current = requestId;
+
+    if (!isSupportedImportFile(selectedFile)) {
+      setFile(null);
+      setRows([]);
+      setTextPreview('');
       setErrorMessage('Choose a PDF or Excel file first.');
       return;
     }
 
+    setFile(selectedFile);
+    setRows([]);
+    setTextPreview('');
+    setExportCsvMode('all');
     setIsUploading(true);
     setErrorMessage(null);
 
     try {
-      const response = await fetch(`${apiBaseUrl}${previewPathForFile(file)}`, {
-        body: file,
-        headers: {
-          Accept: 'application/json',
-          'Content-Type': contentTypeForFile(file),
+      const response = await fetch(
+        `${apiBaseUrl}${previewPathForFile(selectedFile)}`,
+        {
+          body: selectedFile,
+          headers: {
+            Accept: 'application/json',
+            'Content-Type': contentTypeForFile(selectedFile),
+          },
+          method: 'POST',
         },
-        method: 'POST',
-      });
+      );
 
       if (!response.ok) {
         const errorBody = (await response.json().catch(() => null)) as {
@@ -140,35 +211,41 @@ export function ImportPage() {
       }
 
       const preview = (await response.json()) as ImportPreviewResponse;
+
+      if (previewRequestIdRef.current !== requestId) {
+        return;
+      }
+
       setRows(preview.rows.map(toImportReviewRow));
       setTextPreview(preview.textPreview);
-      setExtractedTextLength(preview.extractedTextLength);
     } catch (error) {
+      if (previewRequestIdRef.current !== requestId) {
+        return;
+      }
+
       setRows([]);
       setTextPreview('');
-      setExtractedTextLength(0);
       setErrorMessage(error instanceof Error ? error.message : String(error));
     } finally {
-      setIsUploading(false);
+      if (previewRequestIdRef.current === requestId) {
+        setIsUploading(false);
+      }
     }
   }
 
   function handleDownloadCsv() {
-    const csv = toReviewCsv(rows);
+    const csv = toReviewCsv(rows, exportCsvMode);
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
 
     link.href = url;
-    link.download = buildDownloadName(file?.name);
+    link.download = buildDownloadName(file?.name, exportCsvMode);
     link.click();
     URL.revokeObjectURL(url);
   }
 
-  function updateReviewRows(
-    index: number,
-    changes: Partial<ImportPreviewRow>,
-  ) {
+  function updateReviewRows(index: number, changes: Partial<ImportPreviewRow>) {
     setRows((currentRows) => {
       const targetRow = currentRows[index];
 
@@ -217,52 +294,84 @@ export function ImportPage() {
   }
 
   return (
-    <section className='mx-auto flex h-full min-h-0 max-h-screen max-w-[1600px] flex-col'>
-      <div className='mb-7 flex shrink-0 flex-col gap-4 lg:flex-row lg:items-end lg:justify-between'>
+    <section className='mx-auto flex h-full min-h-0 max-h-screen max-w-[1600px] flex-col gap-3'>
+      <div className='flex shrink-0 flex-col gap-3 lg:flex-row lg:items-end lg:justify-between'>
         <div>
-          <span className='inline-flex h-6 items-center rounded-full bg-accent-lavender/15 px-3 text-xs font-bold uppercase tracking-[0.14em] text-accent-lavender'>
-            Hidden tool
-          </span>
-          <h1 className='mt-3 text-3xl font-semibold tracking-normal text-ink md:text-4xl'>
+          <h1 className='text-2xl font-semibold tracking-normal text-ink md:text-3xl'>
             Import assistant
           </h1>
-          <p className='mt-3 max-w-3xl text-sm font-medium leading-6 text-muted-strong'>
-            Upload a statement, extract transaction rows, and compare
-            them with categorized history before exporting a review CSV.
+          <p className='mt-1 max-w-3xl text-sm font-medium leading-5 text-muted-strong'>
+            Upload a statement, review suggested categories, and export a CSV.
           </p>
         </div>
 
         {rows.length > 0 && (
-          <button
-            type='button'
-            className='inline-flex h-10 items-center justify-center gap-2 rounded-md border border-line bg-panel-raised px-4 text-sm font-semibold text-muted-strong transition hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-lavender'
-            onClick={handleDownloadCsv}
-          >
-            <Download className='size-4' aria-hidden='true' />
-            Download CSV
-          </button>
+          <div className='flex shrink-0 flex-col gap-2 sm:flex-row sm:items-end'>
+            <select
+              className='h-10 rounded-md border border-line bg-panel px-3 text-sm font-semibold text-muted-strong outline-none transition focus:border-accent-lavender focus:ring-2 focus:ring-accent-lavender/25'
+              value={exportCsvMode}
+              onChange={(event) =>
+                setExportCsvMode(event.target.value as ExportCsvMode)
+              }
+            >
+              {exportCsvModeOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+
+            <button
+              type='button'
+              className='inline-flex h-10 items-center justify-center gap-2 rounded-md border border-line bg-panel-raised px-4 text-sm font-semibold text-muted-strong transition hover:text-ink disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-lavender'
+              disabled={exportableRowCount === 0}
+              onClick={handleDownloadCsv}
+              title={
+                exportableRowCount === 0
+                  ? 'No rows match this CSV export selection'
+                  : undefined
+              }
+            >
+              <Download className='size-4' aria-hidden='true' />
+              Download CSV
+            </button>
+          </div>
         )}
       </div>
 
-      <div className='grid min-h-0 flex-1 gap-5 lg:grid-cols-[22rem_minmax(0,1fr)]'>
-        <form
-          className='flex flex-col gap-4 rounded-lg border border-line bg-panel p-5 shadow-shell'
-          onSubmit={handleSubmit}
-        >
+      <div className='shrink-0 rounded-lg border border-line bg-panel p-3 shadow-shell'>
+        <div className='grid gap-3 xl:grid-cols-[minmax(20rem,1fr)_minmax(26rem,1.25fr)_minmax(18rem,0.9fr)] xl:items-stretch'>
           <label
-            className='flex min-h-48 cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed border-line bg-panel-raised/55 px-5 py-8 text-center transition hover:border-accent-lavender'
+            className={cn(
+              'flex min-h-24 cursor-pointer items-center gap-3 rounded-md border border-dashed border-line bg-panel-raised/55 px-3 py-3 transition hover:border-accent-lavender',
+              isDraggingFile && 'border-accent-lavender bg-accent-lavender/10',
+            )}
+            onDragEnter={() => setIsDraggingFile(true)}
+            onDragLeave={handleDragLeave}
+            onDragOver={handleDragOver}
+            onDrop={handleDrop}
             htmlFor='import-assistant-file'
           >
-            <UploadCloud
-              className='mb-4 size-9 text-accent-lavender'
-              aria-hidden='true'
-            />
-            <span className='text-sm font-semibold text-ink'>
-              {file ? file.name : 'Choose PDF or Excel file'}
-            </span>
-            <span className='mt-2 text-xs font-medium leading-5 text-muted'>
-              The preview reads the file in memory only. Nothing is imported or
-              saved.
+            {isUploading ? (
+              <Loader2
+                className='size-7 shrink-0 animate-spin text-accent-lavender'
+                aria-hidden='true'
+              />
+            ) : (
+              <UploadCloud
+                className='size-7 shrink-0 text-accent-lavender'
+                aria-hidden='true'
+              />
+            )}
+            <span className='min-w-0'>
+              <span className='block truncate text-sm font-semibold text-ink'>
+                {file ? file.name : 'Choose PDF or Excel file'}
+              </span>
+              <span className='mt-1 block text-xs font-medium leading-5 text-muted'>
+                {isUploading
+                  ? 'Reading file and matching history.'
+                  : 'Drop a file here or click to browse.'}
+              </span>
             </span>
             <input
               accept='application/pdf,.pdf,.xls,.xlsx,.xlsm'
@@ -273,33 +382,14 @@ export function ImportPage() {
             />
           </label>
 
-          <button
-            type='submit'
-            className='inline-flex h-10 items-center justify-center gap-2 rounded-md bg-accent-green px-4 text-sm font-bold text-canvas transition hover:bg-accent-green/90 disabled:cursor-not-allowed disabled:opacity-60'
-            disabled={isUploading || !file}
-          >
-            {isUploading ? (
-              <Loader2 className='size-4 animate-spin' aria-hidden='true' />
-            ) : (
-              <FileText className='size-4' aria-hidden='true' />
-            )}
-            Preview suggestions
-          </button>
-
-          {errorMessage && (
-            <div className='rounded-md border border-accent-rose/30 bg-accent-rose/10 px-3 py-3 text-sm font-medium leading-6 text-accent-rose'>
-              {errorMessage}
-            </div>
-          )}
-
-          <div className='rounded-md border border-line bg-canvas/40 p-4'>
+          <div className='rounded-md border border-line bg-canvas/40 p-3'>
             <p className='text-sm font-semibold text-ink'>Review summary</p>
-            <dl className='mt-4 grid grid-cols-2 gap-3 text-sm'>
+            <dl className='mt-2 grid grid-cols-2 gap-2 text-sm sm:grid-cols-4 xl:grid-cols-4'>
               <div>
                 <dt className='text-xs font-bold uppercase tracking-[0.14em] text-muted'>
                   Rows
                 </dt>
-                <dd className='mt-1 text-lg font-semibold text-ink'>
+                <dd className='mt-1 text-base font-semibold text-ink'>
                   {rows.length}
                 </dd>
               </div>
@@ -307,7 +397,7 @@ export function ImportPage() {
                 <dt className='text-xs font-bold uppercase tracking-[0.14em] text-muted'>
                   Suggested
                 </dt>
-                <dd className='mt-1 text-lg font-semibold text-ink'>
+                <dd className='mt-1 text-base font-semibold text-ink'>
                   {suggestionCount}
                 </dd>
               </div>
@@ -315,7 +405,7 @@ export function ImportPage() {
                 <dt className='text-xs font-bold uppercase tracking-[0.14em] text-muted'>
                   Unreviewed
                 </dt>
-                <dd className='mt-1 text-lg font-semibold text-ink'>
+                <dd className='mt-1 text-base font-semibold text-ink'>
                   {unreviewedCount}
                 </dd>
               </div>
@@ -323,25 +413,14 @@ export function ImportPage() {
                 <dt className='text-xs font-bold uppercase tracking-[0.14em] text-muted'>
                   Skipped
                 </dt>
-                <dd className='mt-1 text-lg font-semibold text-ink'>
+                <dd className='mt-1 text-base font-semibold text-ink'>
                   {skippedCount}
-                </dd>
-              </div>
-              <div className='col-span-2'>
-                <dt className='text-xs font-bold uppercase tracking-[0.14em] text-muted'>
-                  Extracted text chars
-                </dt>
-                <dd className='mt-1 text-lg font-semibold text-ink'>
-                  {extractedTextLength}
-                </dd>
-                <dd className='mt-1 text-xs font-medium leading-5 text-muted'>
-                  Raw text length before row parsing.
                 </dd>
               </div>
             </dl>
           </div>
 
-          <label className='flex items-start gap-3 rounded-md border border-line bg-canvas/40 p-4'>
+          <label className='flex items-start gap-3 rounded-md border border-line bg-canvas/40 p-3'>
             <input
               checked={applyToMatchingRows}
               className='mt-1 size-4 accent-accent-lavender'
@@ -357,47 +436,53 @@ export function ImportPage() {
               </span>
             </span>
           </label>
-        </form>
+        </div>
 
-        <div className='flex min-h-0 flex-col overflow-hidden rounded-lg border border-line bg-panel shadow-shell'>
-          <div className='grid grid-cols-[7rem_minmax(10rem,0.8fr)_minmax(16rem,1.4fr)_7rem_6rem_minmax(15rem,1fr)_7rem_minmax(14rem,1fr)_3rem] gap-4 border-b border-line px-5 py-3 text-xs font-bold uppercase tracking-[0.14em] text-muted'>
-            <span>Date</span>
-            <span>Concept</span>
-            <span>Description</span>
-            <span>Amount</span>
-            <span>Type</span>
-            <span>Category</span>
-            <span>Status</span>
-            <span>Evidence</span>
-            <span className='sr-only'>Skip</span>
+        {errorMessage && (
+          <div className='mt-4 rounded-md border border-accent-rose/30 bg-accent-rose/10 px-3 py-3 text-sm font-medium leading-6 text-accent-rose'>
+            {errorMessage}
           </div>
+        )}
+      </div>
 
-          <div className='min-h-0 flex-1 overflow-auto'>
-            {isUploading ? (
-              <div className='flex min-h-80 items-center justify-center gap-2 text-sm font-medium text-muted'>
-                <Loader2 className='size-4 animate-spin' aria-hidden='true' />
-                Reading file and matching history
-              </div>
-            ) : rows.length === 0 ? (
-              <EmptyPreviewState textPreview={textPreview} />
-            ) : (
-              <div className='divide-y divide-line'>
-                {rows.map((row, index) => (
-                  <PreviewRow
-                    key={`${row.date}-${row.amount}-${index}`}
-                    categories={categoriesQuery.data ?? []}
-                    applyToMatchingRows={applyToMatchingRows}
-                    index={index}
-                    matchingCount={matchingRowCounts[index] ?? 1}
-                    row={row}
-                    onChange={updateReviewRows}
-                    onReset={resetReviewRows}
-                    onToggleSkipped={toggleSkippedRow}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
+      <div className='flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-line bg-panel shadow-shell'>
+        <div className='grid grid-cols-[7rem_minmax(10rem,0.8fr)_minmax(16rem,1.4fr)_7rem_6rem_minmax(15rem,1fr)_7rem_minmax(14rem,1fr)_3rem] gap-4 border-b border-line px-5 py-3 text-xs font-bold uppercase tracking-[0.14em] text-muted'>
+          <span>Date</span>
+          <span>Concept</span>
+          <span>Description</span>
+          <span>Amount</span>
+          <span>Type</span>
+          <span>Category</span>
+          <span>Status</span>
+          <span>Evidence</span>
+          <span className='sr-only'>Skip</span>
+        </div>
+
+        <div className='min-h-0 flex-1 overflow-auto'>
+          {isUploading ? (
+            <div className='flex min-h-80 items-center justify-center gap-2 text-sm font-medium text-muted'>
+              <Loader2 className='size-4 animate-spin' aria-hidden='true' />
+              Reading file and matching history
+            </div>
+          ) : rows.length === 0 ? (
+            <EmptyPreviewState textPreview={textPreview} />
+          ) : (
+            <div className='divide-y divide-line'>
+              {rows.map((row, index) => (
+                <PreviewRow
+                  key={`${row.date}-${row.amount}-${index}`}
+                  categories={categoriesQuery.data ?? []}
+                  applyToMatchingRows={applyToMatchingRows}
+                  index={index}
+                  matchingCount={matchingRowCounts[index] ?? 1}
+                  row={row}
+                  onChange={updateReviewRows}
+                  onReset={resetReviewRows}
+                  onToggleSkipped={toggleSkippedRow}
+                />
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </section>
@@ -413,8 +498,8 @@ function EmptyPreviewState({ textPreview }: { textPreview: string }) {
             Text was extracted, but no transaction rows matched yet.
           </p>
           <p className='mt-2 text-sm leading-6 text-muted-strong'>
-            The parser now handles split date, description, and amount lines.
-            If this still shows no rows, the text order below will tell us which
+            The parser now handles split date, description, and amount lines. If
+            this still shows no rows, the text order below will tell us which
             bank-specific pattern to support next.
           </p>
         </div>
@@ -564,7 +649,8 @@ function PreviewRow({
         (row.suggestedCategory !== row.originalSuggestedCategory ||
           row.suggestedSubcategory !== row.originalSuggestedSubcategory) ? (
           <span className='text-xs font-medium leading-5 text-muted'>
-            Original: {formatCategorySuggestion(
+            Original:{' '}
+            {formatCategorySuggestion(
               row.originalSuggestedCategory,
               row.originalSuggestedSubcategory,
             )}
@@ -596,8 +682,7 @@ function PreviewRow({
           <span
             className={cn(
               'inline-flex h-6 items-center rounded-full px-2 text-xs font-bold',
-              row.confidence >= 70 &&
-                'bg-accent-green/15 text-accent-green',
+              row.confidence >= 70 && 'bg-accent-green/15 text-accent-green',
               row.confidence >= 55 &&
                 row.confidence < 70 &&
                 'bg-accent-amber/15 text-accent-amber',
@@ -667,9 +752,12 @@ function formatCategorySuggestion(
   return subcategory === null ? category : `${category} / ${subcategory}`;
 }
 
-function toReviewCsv(rows: ImportReviewRow[]): string {
+function toReviewCsv(
+  rows: ImportReviewRow[],
+  exportMode: ExportCsvMode,
+): string {
   const exportableRows = rows
-    .filter((row) => row.skipped !== true)
+    .filter((row) => isExportedReviewRow(row, exportMode))
     .reverse();
 
   return [
@@ -682,6 +770,15 @@ function toReviewCsv(rows: ImportReviewRow[]): string {
         .join(';');
     }),
   ].join('\n');
+}
+
+function isExportedReviewRow(
+  row: ImportReviewRow,
+  exportMode: ExportCsvMode,
+): boolean {
+  return (
+    row.skipped !== true && (exportMode === 'all' || row.type === exportMode)
+  );
 }
 
 function toExportCsvRow(row: ImportReviewRow): ExportCsvRow {
@@ -743,11 +840,15 @@ function normalizeReviewText(value: string): string {
   return value.replace(/\s+/g, ' ').trim().toLocaleLowerCase();
 }
 
-function buildDownloadName(fileName: string | undefined): string {
+function buildDownloadName(
+  fileName: string | undefined,
+  exportMode: ExportCsvMode,
+): string {
   const baseName =
     fileName?.replace(/\.(pdf|xls|xlsx|xlsm)$/i, '') || 'import-preview';
+  const suffix = exportMode === 'all' ? 'review' : `${exportMode}-review`;
 
-  return `${baseName}-review.csv`;
+  return `${baseName}-${suffix}.csv`;
 }
 
 function previewPathForFile(file: File): string {
@@ -769,4 +870,8 @@ function contentTypeForFile(file: File): string {
 
 function isSpreadsheetFile(file: File): boolean {
   return /\.(xls|xlsx|xlsm)$/i.test(file.name);
+}
+
+function isSupportedImportFile(file: File): boolean {
+  return /\.(pdf|xls|xlsx|xlsm)$/i.test(file.name);
 }

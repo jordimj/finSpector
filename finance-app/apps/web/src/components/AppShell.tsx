@@ -8,6 +8,7 @@ import {
   LineChart,
   ReceiptText,
   Search,
+  UploadCloud,
 } from 'lucide-react';
 import {
   useEffect,
@@ -51,6 +52,14 @@ const navigation = [
     to: '/transactions',
     label: 'Transactions',
     icon: ReceiptText,
+  },
+] as const;
+
+const utilityNavigation = [
+  {
+    to: '/tools/import-assistant',
+    label: 'Import assistant',
+    icon: UploadCloud,
   },
 ] as const;
 
@@ -171,19 +180,45 @@ export function AppShell({ children }: AppShellProps) {
     <AccountFilterContext.Provider value={accountFilterContext}>
       <div className='h-screen overflow-hidden bg-canvas text-ink'>
         <div className='mx-auto flex h-full w-full max-w-[1920px]'>
-          <aside className='hidden w-64 shrink-0 border-r border-line bg-panel px-4 py-5 lg:block'>
-            <div className='mb-8 flex items-center gap-3 px-2'>
-              <div className='flex size-9 items-center justify-center rounded-lg border border-line bg-panel-raised text-accent-green'>
-                <CircleDollarSign className='size-5' aria-hidden='true' />
+          <aside className='hidden w-64 shrink-0 flex-col border-r border-line bg-panel px-4 py-5 lg:flex'>
+            <div>
+              <div className='mb-8 flex items-center gap-3 px-2'>
+                <div className='flex size-9 items-center justify-center rounded-lg border border-line bg-panel-raised text-accent-green'>
+                  <CircleDollarSign className='size-5' aria-hidden='true' />
+                </div>
+                <div>
+                  <p className='text-sm font-semibold leading-5'>Finance</p>
+                  <p className='text-xs leading-5 text-muted'>
+                    Local analytics
+                  </p>
+                </div>
               </div>
-              <div>
-                <p className='text-sm font-semibold leading-5'>Finance</p>
-                <p className='text-xs leading-5 text-muted'>Local analytics</p>
-              </div>
+
+              <nav className='space-y-1' aria-label='Primary navigation'>
+                {navigation.map((item) => (
+                  <NavLink
+                    key={item.to}
+                    to={item.to}
+                    className={({ isActive }) =>
+                      cn(
+                        'flex h-10 items-center gap-3 rounded-md px-3 text-sm font-medium text-muted-strong transition hover:bg-panel-raised hover:text-ink',
+                        isActive &&
+                          'border border-line bg-panel-raised text-ink shadow-shell',
+                      )
+                    }
+                  >
+                    <item.icon className='size-4' aria-hidden='true' />
+                    {item.label}
+                  </NavLink>
+                ))}
+              </nav>
             </div>
 
-            <nav className='space-y-1' aria-label='Primary navigation'>
-              {navigation.map((item) => (
+            <nav
+              className='mt-auto space-y-1 border-t border-line pt-4'
+              aria-label='Utility navigation'
+            >
+              {utilityNavigation.map((item) => (
                 <NavLink
                   key={item.to}
                   to={item.to}
@@ -290,7 +325,7 @@ export function AppShell({ children }: AppShellProps) {
                 className='mt-3 flex gap-2 overflow-x-auto lg:hidden'
                 aria-label='Primary navigation'
               >
-                {navigation.map((item) => (
+                {[...navigation, ...utilityNavigation].map((item) => (
                   <NavLink
                     key={item.to}
                     to={item.to}
