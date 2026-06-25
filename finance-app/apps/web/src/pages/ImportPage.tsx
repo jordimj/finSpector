@@ -6,10 +6,13 @@ import {
   FileText,
   Loader2,
   RotateCcw,
+  Trash2,
   UploadCloud,
 } from 'lucide-react';
 import {
+  useEffect,
   useMemo,
+  useRef,
   useState,
   type ChangeEvent,
   type DragEvent,
@@ -62,6 +65,17 @@ type ExportCsvRow = {
 
 type ExportCsvMode = 'all' | ImportPreviewRow['type'];
 
+type ImportReviewDraft = {
+  version: typeof importReviewDraftVersion;
+  sourceFileName: string;
+  rows: ImportReviewRow[];
+  exportCsvMode: ExportCsvMode;
+  updatedAt: string;
+};
+
+const importReviewDraftVersion = 1;
+const importReviewDraftStorageKey = 'finance.importAssistant.reviewDraft.v1';
+
 const csvHeaders: Array<keyof ExportCsvRow> = [
   'date',
   'category',
@@ -91,27 +105,35 @@ const exportCsvModeOptions: Array<{
 ];
 
 export function ImportPage() {
-  const [file, setFile] = useState<File | null>(null);
-  const [rows, setRows] = useState<ImportReviewRow[]>([]);
+  const [initialDraft] = useState<ImportReviewDraft | null>(
+    loadImportReviewDraft,
+  );
+  const [sourceFileName, setSourceFileName] = useState<string | null>(
+    initialDraft?.sourceFileName ?? null,
+  );
+  const [pendingUploadFileName, setPendingUploadFileName] = useState<
+    string | null
+  >(null);
+  const [rows, setRows] = useState<ImportReviewRow[]>(
+    initialDraft?.rows ?? [],
+  );
   const [textPreview, setTextPreview] = useState('');
   const [isDraggingFile, setIsDraggingFile] = useState(false);
   const [applyToMatchingRows, setApplyToMatchingRows] = useState(true);
-  const [exportCsvMode, setExportCsvMode] = useState<ExportCsvMode>('all');
+  const [exportCsvMode, setExportCsvMode] = useState<ExportCsvMode>(
+    initialDraft?.exportCsvMode ?? 'all',
+  );
+  const [draftUpdatedAt, setDraftUpdatedAt] = useState<string | null>(
+    initialDraft?.updatedAt ?? null,
+  );
+  const hasHydratedDraft = useRef(false);
   const previewMutation = useMutation({
     mutationFn: fetchImportPreview,
-    onMutate: (selectedFile) => {
-      setFile(isSupportedImportFile(selectedFile) ? selectedFile : null);
-      setRows([]);
-      setTextPreview('');
-      setExportCsvMode('all');
-    },
-    onError: () => {
-      setRows([]);
-      setTextPreview('');
-    },
   });
   const categoriesQuery = useCategories();
   const isUploading = previewMutation.isPending;
+  const displayedFileName = pendingUploadFileName ?? sourceFileName;
+  const hasReviewDraft = rows.length > 0 && sourceFileName !== null;
   const errorMessage =
     previewMutation.error instanceof Error
       ? previewMutation.error.message
@@ -144,6 +166,27 @@ export function ImportPage() {
 
     return rows.map((row) => counts.get(row.originalReviewKey) ?? 1);
   }, [rows]);
+
+  useEffect(() => {
+    if (!hasHydratedDraft.current) {
+      hasHydratedDraft.current = true;
+      return;
+    }
+
+    if (sourceFileName === null || rows.length === 0) {
+      return;
+    }
+
+    const updatedAt = saveImportReviewDraft({
+      exportCsvMode,
+      rows,
+      sourceFileName,
+    });
+
+    if (updatedAt !== null) {
+      setDraftUpdatedAt(updatedAt);
+    }
+  }, [exportCsvMode, rows, sourceFileName]);
 
   function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
     const selectedFile = event.target.files?.[0] ?? null;
@@ -184,12 +227,45 @@ export function ImportPage() {
   }
 
   function previewSelectedFile(selectedFile: File) {
+    if (!isSupportedImportFile(selectedFile)) {
+      previewMutation.mutate(selectedFile);
+      return;
+    }
+
+    if (!confirmDraftReplacement(sourceFileName, rows)) {
+      return;
+    }
+
+    setPendingUploadFileName(selectedFile.name);
     previewMutation.mutate(selectedFile, {
       onSuccess: (preview) => {
-        setRows(preview.rows.map(toImportReviewRow));
+        const reviewRows = preview.rows.map(toImportReviewRow);
+
+        setSourceFileName(selectedFile.name);
+        setRows(reviewRows);
         setTextPreview(preview.textPreview);
+        setExportCsvMode('all');
+        setDraftUpdatedAt(null);
+
+        if (reviewRows.length === 0) {
+          clearImportReviewDraft();
+        }
+      },
+      onSettled: () => {
+        setPendingUploadFileName(null);
       },
     });
+  }
+
+  function handleClearDraft() {
+    clearImportReviewDraft();
+    setSourceFileName(null);
+    setPendingUploadFileName(null);
+    setRows([]);
+    setTextPreview('');
+    setExportCsvMode('all');
+    setDraftUpdatedAt(null);
+    previewMutation.reset();
   }
 
   function handleDownloadCsv() {
@@ -199,7 +275,7 @@ export function ImportPage() {
     const link = document.createElement('a');
 
     link.href = url;
-    link.download = buildDownloadName(file?.name, exportCsvMode);
+    link.download = buildDownloadName(sourceFileName, exportCsvMode);
     link.click();
     URL.revokeObjectURL(url);
   }
@@ -324,12 +400,14 @@ export function ImportPage() {
             )}
             <span className='min-w-0'>
               <span className='block truncate text-sm font-semibold text-ink'>
-                {file ? file.name : 'Choose PDF or Excel file'}
+                {displayedFileName ?? 'Choose PDF or Excel file'}
               </span>
               <span className='mt-1 block text-xs font-medium leading-5 text-muted'>
                 {isUploading
                   ? 'Reading file and matching history.'
-                  : 'Drop a file here or click to browse.'}
+                  : hasReviewDraft
+                    ? 'Review draft restored locally.'
+                    : 'Drop a file here or click to browse.'}
               </span>
             </span>
             <input
@@ -396,6 +474,29 @@ export function ImportPage() {
             </span>
           </label>
         </div>
+
+        {hasReviewDraft && (
+          <div className='mt-3 flex flex-col gap-3 rounded-md border border-line bg-canvas/40 px-3 py-3 sm:flex-row sm:items-center sm:justify-between'>
+            <div className='min-w-0'>
+              <p className='truncate text-sm font-semibold text-ink'>
+                Local draft: {sourceFileName}
+              </p>
+              <p className='mt-1 text-xs font-medium leading-5 text-muted'>
+                {draftUpdatedAt === null
+                  ? 'Saved locally.'
+                  : `Saved ${formatDraftSavedAt(draftUpdatedAt)}.`}
+              </p>
+            </div>
+            <button
+              className='inline-flex h-9 w-fit items-center justify-center gap-2 rounded-md border border-line bg-panel-raised px-3 text-xs font-semibold text-muted-strong transition hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-lavender'
+              onClick={handleClearDraft}
+              type='button'
+            >
+              <Trash2 className='size-4' aria-hidden='true' />
+              Clear draft
+            </button>
+          </div>
+        )}
 
         {errorMessage && (
           <div className='mt-4 rounded-md border border-accent-rose/30 bg-accent-rose/10 px-3 py-3 text-sm font-medium leading-6 text-accent-rose'>
@@ -690,6 +791,182 @@ function toImportReviewRow(row: ImportPreviewRow): ImportReviewRow {
   };
 }
 
+function confirmDraftReplacement(
+  sourceFileName: string | null,
+  rows: ImportReviewRow[],
+): boolean {
+  if (rows.length === 0 || typeof window === 'undefined') {
+    return true;
+  }
+
+  const draftName = sourceFileName ?? 'the current import';
+
+  return window.confirm(
+    `Replace the saved review draft for ${draftName}? The existing local draft will stay available if the new preview fails.`,
+  );
+}
+
+function loadImportReviewDraft(): ImportReviewDraft | null {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  try {
+    const storedValue = window.localStorage.getItem(importReviewDraftStorageKey);
+
+    if (storedValue === null) {
+      return null;
+    }
+
+    const draft = normalizeImportReviewDraft(JSON.parse(storedValue));
+
+    if (draft === null) {
+      clearImportReviewDraft();
+    }
+
+    return draft;
+  } catch {
+    clearImportReviewDraft();
+    return null;
+  }
+}
+
+function saveImportReviewDraft({
+  exportCsvMode,
+  rows,
+  sourceFileName,
+}: {
+  exportCsvMode: ExportCsvMode;
+  rows: ImportReviewRow[];
+  sourceFileName: string;
+}): string | null {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  const updatedAt = new Date().toISOString();
+  const draft: ImportReviewDraft = {
+    exportCsvMode,
+    rows,
+    sourceFileName,
+    updatedAt,
+    version: importReviewDraftVersion,
+  };
+
+  try {
+    window.localStorage.setItem(
+      importReviewDraftStorageKey,
+      JSON.stringify(draft),
+    );
+
+    return updatedAt;
+  } catch {
+    return null;
+  }
+}
+
+function clearImportReviewDraft() {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  try {
+    window.localStorage.removeItem(importReviewDraftStorageKey);
+  } catch {
+    // localStorage can be unavailable in private or restricted browser modes.
+  }
+}
+
+function normalizeImportReviewDraft(value: unknown): ImportReviewDraft | null {
+  if (!isRecord(value) || value.version !== importReviewDraftVersion) {
+    return null;
+  }
+
+  const sourceFileName = toTrimmedText(value.sourceFileName);
+  const rows = normalizeImportReviewRows(value.rows);
+
+  if (sourceFileName.length === 0 || rows.length === 0) {
+    return null;
+  }
+
+  return {
+    exportCsvMode: isExportCsvMode(value.exportCsvMode)
+      ? value.exportCsvMode
+      : 'all',
+    rows,
+    sourceFileName,
+    updatedAt: toValidIsoDate(value.updatedAt) ?? new Date().toISOString(),
+    version: importReviewDraftVersion,
+  };
+}
+
+function normalizeImportReviewRows(value: unknown): ImportReviewRow[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value.flatMap((item) => {
+    const row = normalizeImportReviewRow(item);
+
+    return row === null ? [] : [row];
+  });
+}
+
+function normalizeImportReviewRow(value: unknown): ImportReviewRow | null {
+  if (!isRecord(value)) {
+    return null;
+  }
+
+  const date = toText(value.date);
+  const description = toText(value.description);
+  const amount = toText(value.amount);
+  const type = value.type;
+
+  if (
+    date.trim().length === 0 ||
+    amount.trim().length === 0 ||
+    (type !== 'expense' && type !== 'income')
+  ) {
+    return null;
+  }
+
+  const concept = toOptionalText(value.concept);
+  const originalDescription = toText(value.originalDescription) || description;
+  const originalSuggestedCategory = toNullableText(
+    value.originalSuggestedCategory,
+  );
+  const originalSuggestedSubcategory = toNullableText(
+    value.originalSuggestedSubcategory,
+  );
+  const originalReviewKey =
+    toOptionalText(value.originalReviewKey) ??
+    `${normalizeReviewText(concept ?? '')}::${normalizeReviewText(
+      originalDescription,
+    )}`;
+
+  return {
+    amount,
+    confidence: clampConfidence(value.confidence),
+    date,
+    description,
+    matchedAmount: toNullableText(value.matchedAmount),
+    matchedDate: toNullableText(value.matchedDate),
+    matchedDescription: toNullableText(value.matchedDescription),
+    matchReason: toText(value.matchReason),
+    originalDescription,
+    originalReviewKey,
+    originalSuggestedCategory,
+    originalSuggestedSubcategory,
+    rawText: toText(value.rawText),
+    skipped: value.skipped === true ? true : undefined,
+    suggestedCategory: toNullableText(value.suggestedCategory),
+    suggestedSubcategory: toNullableText(value.suggestedSubcategory),
+    reviewed: value.reviewed === true ? true : undefined,
+    type,
+    ...(concept === undefined ? {} : { concept }),
+  };
+}
+
 async function fetchImportPreview(file: File): Promise<ImportPreviewResponse> {
   if (!isSupportedImportFile(file)) {
     throw new Error('Choose a PDF or Excel file first.');
@@ -827,7 +1104,7 @@ function normalizeReviewText(value: string): string {
 }
 
 function buildDownloadName(
-  fileName: string | undefined,
+  fileName: string | null | undefined,
   exportMode: ExportCsvMode,
 ): string {
   const baseName =
@@ -860,4 +1137,69 @@ function isSpreadsheetFile(file: File): boolean {
 
 function isSupportedImportFile(file: File): boolean {
   return /\.(pdf|xls|xlsx|xlsm)$/i.test(file.name);
+}
+
+function formatDraftSavedAt(value: string): string {
+  const savedAt = new Date(value);
+
+  if (!Number.isFinite(savedAt.getTime())) {
+    return 'locally';
+  }
+
+  return savedAt.toLocaleString(undefined, {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  });
+}
+
+function isExportCsvMode(value: unknown): value is ExportCsvMode {
+  return value === 'all' || value === 'expense' || value === 'income';
+}
+
+function clampConfidence(value: unknown): number {
+  const confidence = Number(value);
+
+  if (!Number.isFinite(confidence)) {
+    return 0;
+  }
+
+  return Math.min(100, Math.max(0, Math.round(confidence)));
+}
+
+function toValidIsoDate(value: unknown): string | null {
+  if (typeof value !== 'string') {
+    return null;
+  }
+
+  return Number.isFinite(new Date(value).getTime()) ? value : null;
+}
+
+function toText(value: unknown): string {
+  return typeof value === 'string' ? value : '';
+}
+
+function toOptionalText(value: unknown): string | undefined {
+  if (typeof value !== 'string') {
+    return undefined;
+  }
+
+  return value.length > 0 ? value : undefined;
+}
+
+function toTrimmedText(value: unknown): string {
+  return typeof value === 'string' ? value.trim() : '';
+}
+
+function toNullableText(value: unknown): string | null {
+  if (typeof value !== 'string') {
+    return null;
+  }
+
+  const text = value.trim();
+
+  return text.length > 0 ? text : null;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
