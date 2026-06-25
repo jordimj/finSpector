@@ -1,3 +1,4 @@
+import { useMutation } from '@tanstack/react-query';
 import {
   Ban,
   CheckCircle2,
@@ -9,7 +10,6 @@ import {
 } from 'lucide-react';
 import {
   useMemo,
-  useRef,
   useState,
   type ChangeEvent,
   type DragEvent,
@@ -91,16 +91,31 @@ const exportCsvModeOptions: Array<{
 ];
 
 export function ImportPage() {
-  const previewRequestIdRef = useRef(0);
   const [file, setFile] = useState<File | null>(null);
   const [rows, setRows] = useState<ImportReviewRow[]>([]);
   const [textPreview, setTextPreview] = useState('');
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
   const [isDraggingFile, setIsDraggingFile] = useState(false);
   const [applyToMatchingRows, setApplyToMatchingRows] = useState(true);
   const [exportCsvMode, setExportCsvMode] = useState<ExportCsvMode>('all');
+  const previewMutation = useMutation({
+    mutationFn: fetchImportPreview,
+    onMutate: (selectedFile) => {
+      setFile(isSupportedImportFile(selectedFile) ? selectedFile : null);
+      setRows([]);
+      setTextPreview('');
+      setExportCsvMode('all');
+    },
+    onError: () => {
+      setRows([]);
+      setTextPreview('');
+    },
+  });
   const categoriesQuery = useCategories();
+  const isUploading = previewMutation.isPending;
+  const errorMessage =
+    previewMutation.error instanceof Error
+      ? previewMutation.error.message
+      : null;
   const suggestionCount = useMemo(
     () => rows.filter((row) => row.suggestedCategory !== null).length,
     [rows],
@@ -137,7 +152,7 @@ export function ImportPage() {
       return;
     }
 
-    void previewSelectedFile(selectedFile);
+    previewSelectedFile(selectedFile);
     event.target.value = '';
   }
 
@@ -165,72 +180,16 @@ export function ImportPage() {
       return;
     }
 
-    void previewSelectedFile(selectedFile);
+    previewSelectedFile(selectedFile);
   }
 
-  async function previewSelectedFile(selectedFile: File) {
-    const requestId = previewRequestIdRef.current + 1;
-    previewRequestIdRef.current = requestId;
-
-    if (!isSupportedImportFile(selectedFile)) {
-      setFile(null);
-      setRows([]);
-      setTextPreview('');
-      setErrorMessage('Choose a PDF or Excel file first.');
-      return;
-    }
-
-    setFile(selectedFile);
-    setRows([]);
-    setTextPreview('');
-    setExportCsvMode('all');
-    setIsUploading(true);
-    setErrorMessage(null);
-
-    try {
-      const response = await fetch(
-        `${apiBaseUrl}${previewPathForFile(selectedFile)}`,
-        {
-          body: selectedFile,
-          headers: {
-            Accept: 'application/json',
-            'Content-Type': contentTypeForFile(selectedFile),
-          },
-          method: 'POST',
-        },
-      );
-
-      if (!response.ok) {
-        const errorBody = (await response.json().catch(() => null)) as {
-          message?: string;
-        } | null;
-
-        throw new Error(
-          errorBody?.message ?? `Preview failed with ${response.status}`,
-        );
-      }
-
-      const preview = (await response.json()) as ImportPreviewResponse;
-
-      if (previewRequestIdRef.current !== requestId) {
-        return;
-      }
-
-      setRows(preview.rows.map(toImportReviewRow));
-      setTextPreview(preview.textPreview);
-    } catch (error) {
-      if (previewRequestIdRef.current !== requestId) {
-        return;
-      }
-
-      setRows([]);
-      setTextPreview('');
-      setErrorMessage(error instanceof Error ? error.message : String(error));
-    } finally {
-      if (previewRequestIdRef.current === requestId) {
-        setIsUploading(false);
-      }
-    }
+  function previewSelectedFile(selectedFile: File) {
+    previewMutation.mutate(selectedFile, {
+      onSuccess: (preview) => {
+        setRows(preview.rows.map(toImportReviewRow));
+        setTextPreview(preview.textPreview);
+      },
+    });
   }
 
   function handleDownloadCsv() {
@@ -729,6 +688,33 @@ function toImportReviewRow(row: ImportPreviewRow): ImportReviewRow {
     originalSuggestedSubcategory: row.suggestedSubcategory,
     originalReviewKey: buildReviewRowKey(row),
   };
+}
+
+async function fetchImportPreview(file: File): Promise<ImportPreviewResponse> {
+  if (!isSupportedImportFile(file)) {
+    throw new Error('Choose a PDF or Excel file first.');
+  }
+
+  const response = await fetch(`${apiBaseUrl}${previewPathForFile(file)}`, {
+    body: file,
+    headers: {
+      Accept: 'application/json',
+      'Content-Type': contentTypeForFile(file),
+    },
+    method: 'POST',
+  });
+
+  if (!response.ok) {
+    const errorBody = (await response.json().catch(() => null)) as {
+      message?: string;
+    } | null;
+
+    throw new Error(
+      errorBody?.message ?? `Preview failed with ${response.status}`,
+    );
+  }
+
+  return response.json() as Promise<ImportPreviewResponse>;
 }
 
 function resetImportReviewRow(row: ImportReviewRow): ImportReviewRow {
