@@ -152,7 +152,8 @@ export function ImportPage() {
   const previewMutation = useMutation({
     mutationFn: fetchImportPreview,
   });
-  const categoriesQuery = useCategories();
+  const expenseCategoriesQuery = useCategories('expense');
+  const incomeCategoriesQuery = useCategories('income');
   const isUploading = previewMutation.isPending;
   const displayedFileName = pendingUploadFileName ?? sourceFileName;
   const hasReviewDraft = rows.length > 0 && sourceFileName !== null;
@@ -195,6 +196,13 @@ export function ImportPage() {
 
     return rows.map((row) => counts.get(row.originalReviewKey) ?? 1);
   }, [rows]);
+  const categoriesByType = useMemo(
+    () => ({
+      expense: expenseCategoriesQuery.data ?? [],
+      income: incomeCategoriesQuery.data ?? [],
+    }),
+    [expenseCategoriesQuery.data, incomeCategoriesQuery.data],
+  );
 
   useEffect(() => {
     if (!hasHydratedDraft.current) {
@@ -591,7 +599,7 @@ export function ImportPage() {
               {rows.map((row, index) => (
                 <PreviewRow
                   key={`${row.date}-${row.amount}-${index}`}
-                  categories={categoriesQuery.data ?? []}
+                  categories={categoriesByType[row.type]}
                   applyToMatchingRows={applyToMatchingRows}
                   index={index}
                   matchingCount={matchingRowCounts[index] ?? 1}
@@ -671,14 +679,22 @@ function PreviewRow({
   onToggleSkipped: (index: number) => void;
 }) {
   const isSkipped = row.skipped === true;
+  const categoryInputId = `import-category-${index}`;
+  const subcategoryInputId = `import-subcategory-${index}`;
+  const hasCategory =
+    row.suggestedCategory !== null && row.suggestedCategory.trim().length > 0;
   const selectedCategory = categories.find(
     (category) => category.name === row.suggestedCategory,
   );
   const subcategories = selectedCategory?.subcategories ?? [];
+  const categoryOptions = categories.map((category) => category.name);
+  const subcategoryOptions = subcategories.map(
+    (subcategory) => subcategory.name,
+  );
 
   function updateCategory(categoryName: string) {
     onChange(index, {
-      suggestedCategory: categoryName === '' ? null : categoryName,
+      suggestedCategory: categoryName.trim().length === 0 ? null : categoryName,
       suggestedSubcategory: null,
     });
   }
@@ -726,46 +742,34 @@ function PreviewRow({
         {formatTransactionAmount(row)}
       </span>
       <span className='grid min-w-0 gap-2'>
-        <label>
-          <span className='sr-only'>Category</span>
-          <select
-            className={cn(
-              'h-9 w-full rounded-md border border-line bg-panel-raised px-3 text-sm font-semibold outline-none transition focus:border-accent-lavender focus:ring-2 focus:ring-accent-lavender/25 disabled:cursor-not-allowed disabled:opacity-70',
-              row.suggestedCategory ? 'text-accent-green' : 'text-muted',
-            )}
-            disabled={isSkipped}
-            value={row.suggestedCategory ?? ''}
-            onChange={(event) => updateCategory(event.target.value)}
-          >
-            <option value=''>None</option>
-            {categories.map((category) => (
-              <option key={category.id} value={category.name}>
-                {category.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label>
-          <span className='sr-only'>Subcategory</span>
-          <select
-            className='h-9 w-full rounded-md border border-line bg-panel-raised px-3 text-sm font-medium text-muted-strong outline-none transition focus:border-accent-lavender focus:ring-2 focus:ring-accent-lavender/25 disabled:cursor-not-allowed disabled:opacity-50'
-            disabled={isSkipped || row.suggestedCategory === null}
-            value={row.suggestedSubcategory ?? ''}
-            onChange={(event) =>
-              onChange(index, {
-                suggestedSubcategory:
-                  event.target.value === '' ? null : event.target.value,
-              })
-            }
-          >
-            <option value=''>None</option>
-            {subcategories.map((subcategory) => (
-              <option key={subcategory.id} value={subcategory.name}>
-                {subcategory.name}
-              </option>
-            ))}
-          </select>
-        </label>
+        <EditableSuggestionInput
+          id={categoryInputId}
+          label='Category'
+          options={categoryOptions}
+          value={row.suggestedCategory ?? ''}
+          placeholder='None'
+          disabled={isSkipped}
+          className={cn(
+            'font-semibold',
+            row.suggestedCategory ? 'text-accent-green' : 'text-muted',
+          )}
+          onValueChange={updateCategory}
+        />
+        <EditableSuggestionInput
+          id={subcategoryInputId}
+          label='Subcategory'
+          options={subcategoryOptions}
+          value={row.suggestedSubcategory ?? ''}
+          placeholder='None'
+          disabled={isSkipped || !hasCategory}
+          className='font-medium text-muted-strong disabled:opacity-50'
+          onValueChange={(value) =>
+            onChange(index, {
+              suggestedSubcategory:
+                value.trim().length === 0 ? null : value,
+            })
+          }
+        />
         {row.reviewed === true &&
         (row.suggestedCategory !== row.originalSuggestedCategory ||
           row.suggestedSubcategory !== row.originalSuggestedSubcategory) ? (
@@ -861,6 +865,143 @@ function PreviewRow({
         </button>
       </span>
     </div>
+  );
+}
+
+function EditableSuggestionInput({
+  className,
+  disabled,
+  id,
+  label,
+  options,
+  placeholder,
+  value,
+  onValueChange,
+}: {
+  className?: string;
+  disabled: boolean;
+  id: string;
+  label: string;
+  options: string[];
+  placeholder: string;
+  value: string;
+  onValueChange: (value: string) => void;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [highlightedIndex, setHighlightedIndex] = useState(0);
+  const visibleOptions = useMemo(
+    () => filterSuggestionOptions(options, value),
+    [options, value],
+  );
+  const hasOptions = visibleOptions.length > 0;
+  const showOptions = isOpen && !disabled && hasOptions;
+
+  useEffect(() => {
+    setHighlightedIndex(0);
+  }, [visibleOptions]);
+
+  function selectOption(option: string) {
+    onValueChange(option);
+    setIsOpen(false);
+  }
+
+  function handleKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
+    if (!hasOptions) {
+      return;
+    }
+
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      setIsOpen(true);
+      setHighlightedIndex((currentIndex) =>
+        currentIndex + 1 >= visibleOptions.length ? 0 : currentIndex + 1,
+      );
+      return;
+    }
+
+    if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      setIsOpen(true);
+      setHighlightedIndex((currentIndex) =>
+        currentIndex === 0 ? visibleOptions.length - 1 : currentIndex - 1,
+      );
+      return;
+    }
+
+    if (event.key === 'Enter' && isOpen) {
+      event.preventDefault();
+      const option = visibleOptions[highlightedIndex] ?? visibleOptions[0];
+
+      if (option !== undefined) {
+        selectOption(option);
+      }
+
+      return;
+    }
+
+    if (event.key === 'Escape') {
+      setIsOpen(false);
+    }
+  }
+
+  return (
+    <div className='relative'>
+      <label className='sr-only' htmlFor={id}>
+        {label}
+      </label>
+      <input
+        autoComplete='off'
+        className={cn(
+          'h-9 w-full rounded-md border border-line bg-panel-raised px-3 text-sm outline-none transition focus:border-accent-lavender focus:ring-2 focus:ring-accent-lavender/25 disabled:cursor-not-allowed disabled:opacity-70',
+          className,
+        )}
+        disabled={disabled}
+        id={id}
+        placeholder={placeholder}
+        value={value}
+        onBlur={() => setIsOpen(false)}
+        onChange={(event) => {
+          onValueChange(event.target.value);
+          setIsOpen(true);
+        }}
+        onFocus={() => setIsOpen(true)}
+        onKeyDown={handleKeyDown}
+      />
+      {showOptions ? (
+        <div className='absolute left-0 right-0 top-full z-40 mt-1 max-h-36 overflow-y-auto rounded-md border border-line bg-panel py-1 shadow-shell'>
+          {visibleOptions.map((option, optionIndex) => (
+            <button
+              key={option}
+              className={cn(
+                'flex min-h-8 w-full items-center px-3 py-1.5 text-left text-sm font-medium text-muted-strong outline-none transition hover:bg-accent-lavender/10 hover:text-ink',
+                optionIndex === highlightedIndex &&
+                  'bg-accent-lavender/10 text-ink',
+              )}
+              onMouseDown={(event) => {
+                event.preventDefault();
+                selectOption(option);
+              }}
+              type='button'
+            >
+              <span className='truncate'>{option}</span>
+            </button>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function filterSuggestionOptions(options: string[], value: string): string[] {
+  const normalizedValue = normalizeReviewText(value);
+  const uniqueOptions = Array.from(new Set(options));
+
+  if (normalizedValue.length === 0) {
+    return uniqueOptions;
+  }
+
+  return uniqueOptions.filter((option) =>
+    normalizeReviewText(option).includes(normalizedValue),
   );
 }
 

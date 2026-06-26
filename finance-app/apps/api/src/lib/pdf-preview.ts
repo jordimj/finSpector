@@ -612,6 +612,10 @@ function scoreCandidate(
   candidate: HistoricalTransaction,
   source: MatchSource,
 ): ScoredCandidate | null {
+  if (candidate.type !== row.type) {
+    return null;
+  }
+
   const matchedText =
     source === 'bankConcept' ? candidate.bankConcept : candidate.description;
 

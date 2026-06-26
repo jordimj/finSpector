@@ -23,7 +23,7 @@ describe('registerImportRoutes', () => {
     const app = Fastify({ logger: false });
 
     await app.register(registerImportRoutes, {
-      extractPdfText: async () => '08/04/2025 BONPREU MARKET 17,25 EUR',
+      extractPdfText: async () => '08/04/2025 BONPREU MARKET -17,25 EUR',
       fetchHistoricalTransactions: async () => historicalRows,
     });
 
@@ -69,7 +69,7 @@ describe('registerImportRoutes', () => {
     const response = await app.inject({
       body: workbookBuffer([
         ['Fecha', 'Concepto', 'Descripción', 'Importe'],
-        ['08/04/2025', 'Compra tarjeta', 'Bonpreu supermarket', '17,25 EUR'],
+        ['08/04/2025', 'Compra tarjeta', 'Bonpreu supermarket', '-17,25 EUR'],
       ]),
       headers: {
         'content-type':
@@ -96,7 +96,7 @@ describe('registerImportRoutes', () => {
     assert.equal(payload.rowCount, 1);
     assert.equal(payload.rows[0]?.concept, 'Compra tarjeta');
     assert.equal(payload.rows[0]?.description, 'Bonpreu supermarket');
-    assert.equal(payload.rows[0]?.type, 'income');
+    assert.equal(payload.rows[0]?.type, 'expense');
     assert.equal(payload.rows[0]?.suggestedDescription, 'Bonpreu supermarket');
     assert.equal(payload.rows[0]?.suggestedCategory, 'MENJAR');
     assert.equal(payload.rows[0]?.suggestedSubcategory, 'Supermercat');

@@ -94,7 +94,7 @@ describe('suggestTransactionCategory', () => {
         date: '2024-02-01',
         description: 'Bonpreu supermarket',
         amount: '17.25',
-        type: 'income',
+        type: 'expense',
         rawText: 'Bonpreu supermarket',
       },
       historicalRows,
@@ -105,6 +105,23 @@ describe('suggestTransactionCategory', () => {
     assert.equal(suggestion.suggestedDescription, 'Bonpreu supermarket');
     assert.equal(suggestion.matchedAmount, '17.25');
     assert.ok(suggestion.confidence >= 70);
+  });
+
+  it('does not suggest categories from a different transaction type', () => {
+    const suggestion = suggestTransactionCategory(
+      {
+        date: '2024-02-01',
+        description: 'Bonpreu supermarket',
+        amount: '17.25',
+        type: 'income',
+        rawText: 'Bonpreu supermarket',
+      },
+      historicalRows,
+    );
+
+    assert.equal(suggestion.suggestedCategory, null);
+    assert.equal(suggestion.suggestedSubcategory, null);
+    assert.equal(suggestion.suggestedDescription, null);
   });
 
   it('suggests skipping when Splitwise already has the exact amount soon after', () => {
