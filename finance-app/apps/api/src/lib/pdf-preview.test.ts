@@ -107,6 +107,69 @@ describe('suggestTransactionCategory', () => {
     assert.ok(suggestion.confidence >= 70);
   });
 
+  it('suggests skipping when Splitwise already has the exact amount soon after', () => {
+    const suggestion = suggestTransactionCategory(
+      {
+        date: '2024-02-01',
+        description: 'Bonpreu supermarket',
+        amount: '17.25',
+        type: 'expense',
+        rawText: 'Bonpreu supermarket',
+      },
+      [
+        ...historicalRows,
+        {
+          id: 'splitwise-1',
+          date: '2024-02-10',
+          amount: '17.25',
+          description: 'Splitwise Bonpreu share',
+          category: 'DESPESES',
+          subcategory: 'Splitwise',
+          account: 'splitwise',
+          type: 'expense',
+        },
+      ],
+    );
+
+    assert.equal(suggestion.skipped, true);
+    assert.equal(suggestion.suggestedCategory, null);
+    assert.equal(suggestion.suggestedSubcategory, null);
+    assert.equal(suggestion.suggestedDescription, null);
+    assert.equal(suggestion.matchedDescription, 'Splitwise Bonpreu share');
+    assert.equal(suggestion.matchedAmount, '17.25');
+    assert.equal(suggestion.matchedDate, '2024-02-10');
+    assert.match(suggestion.matchReason, /Splitwise exact amount/);
+  });
+
+  it('keeps suggesting a category when Splitwise is outside the skip window', () => {
+    const suggestion = suggestTransactionCategory(
+      {
+        date: '2024-02-01',
+        description: 'Bonpreu supermarket',
+        amount: '17.25',
+        type: 'expense',
+        rawText: 'Bonpreu supermarket',
+      },
+      [
+        ...historicalRows,
+        {
+          id: 'splitwise-late',
+          date: '2024-02-16',
+          amount: '17.25',
+          description: 'Late Splitwise Bonpreu share',
+          category: 'DESPESES',
+          subcategory: 'Splitwise',
+          account: 'splitwise',
+          type: 'expense',
+        },
+      ],
+    );
+
+    assert.equal(suggestion.skipped, undefined);
+    assert.equal(suggestion.suggestedCategory, 'MENJAR');
+    assert.equal(suggestion.suggestedSubcategory, 'Supermercat');
+  });
+
   it('prefers historical bank concept before falling back to description', () => {
     const suggestion = suggestTransactionCategory(
       {

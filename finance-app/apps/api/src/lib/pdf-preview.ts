@@ -8,6 +8,7 @@ const amountPattern =
   /[-+−]?\s*(?:(?:EUR|CHF|USD|€)\s*)?(?:\d{1,3}(?:[.'\s]\d{3})+|\d+)[,.]\d{2}\s*(?:EUR|CHF|USD|€)?/gi;
 const suggestionThreshold = 0.55;
 const minimumDescriptionScore = 0.35;
+const splitwiseSkipWindowDays = 14;
 const maxTextPreviewLength = 4000;
 const maxTextPreviewLines = 80;
 
@@ -41,6 +42,7 @@ export type PdfPreviewRow = ExtractedPdfTransaction & {
   matchedAmount: string | null;
   matchedDate: string | null;
   matchReason: string;
+  skipped?: boolean;
 };
 
 type AmountMatch = {
@@ -230,6 +232,24 @@ export function suggestTransactionCategory(
   row: ExtractedPdfTransaction,
   history: HistoricalTransaction[],
 ): PdfPreviewRow {
+  const splitwiseMatch = findSplitwiseSkipMatch(row, history);
+
+  if (splitwiseMatch) {
+    return {
+      ...row,
+      suggestedDescription: null,
+      suggestedCategory: null,
+      suggestedSubcategory: null,
+      confidence: 100,
+      matchedDescription:
+        splitwiseMatch.description ?? splitwiseMatch.bankConcept ?? null,
+      matchedAmount: splitwiseMatch.amount,
+      matchedDate: splitwiseMatch.date,
+      matchReason: `Splitwise exact amount within ${splitwiseSkipWindowDays} days`,
+      skipped: true,
+    };
+  }
+
   const bestMatch =
     findBestMatch(row, history, 'bankConcept') ??
     findBestMatch(row, history, 'description');
@@ -524,6 +544,67 @@ function findBestMatch(
     .sort((left, right) => right.confidence - left.confidence);
 
   return matches[0] ?? null;
+}
+
+function findSplitwiseSkipMatch(
+  row: ExtractedPdfTransaction,
+  history: HistoricalTransaction[],
+): HistoricalTransaction | null {
+  const rowDate = parseDateKey(row.date);
+
+  if (rowDate === null) {
+    return null;
+  }
+
+  return (
+    history
+      .filter((candidate) => {
+        if (candidate.account !== 'splitwise' || candidate.amount !== row.amount) {
+          return false;
+        }
+
+        const candidateDate = parseDateKey(candidate.date);
+
+        if (candidateDate === null) {
+          return false;
+        }
+
+        const daysAfterRow = daysBetweenUtcDates(rowDate, candidateDate);
+
+        return daysAfterRow >= 0 && daysAfterRow <= splitwiseSkipWindowDays;
+      })
+      .sort(
+        (left, right) =>
+          daysBetweenUtcDates(rowDate, parseDateKey(left.date) ?? rowDate) -
+          daysBetweenUtcDates(rowDate, parseDateKey(right.date) ?? rowDate),
+      )[0] ?? null
+  );
+}
+
+function parseDateKey(value: string): Date | null {
+  const match = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+
+  if (!match) {
+    return null;
+  }
+
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+
+  if (!isValidDateParts(String(year), String(month), String(day))) {
+    return null;
+  }
+
+  return new Date(Date.UTC(year, month - 1, day));
+}
+
+function daysBetweenUtcDates(startDate: Date, endDate: Date): number {
+  const millisecondsPerDay = 24 * 60 * 60 * 1000;
+
+  return Math.round(
+    (endDate.getTime() - startDate.getTime()) / millisecondsPerDay,
+  );
 }
 
 function scoreCandidate(
