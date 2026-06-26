@@ -9,9 +9,11 @@ export type TransactionTypeFilter = 'all' | TransactionType;
 export type TransactionQuery = {
   type?: TransactionTypeFilter;
   account?: ExpenseAccount;
+  categoryId?: number;
   from?: string;
   to?: string;
   search?: string;
+  subcategoryId?: number;
   limit?: number;
   offset?: number;
 };
@@ -47,9 +49,11 @@ export function transactionQuerySchema(): object {
     properties: {
       type: { type: 'string', enum: ['all', 'expense', 'income'] },
       account: { type: 'string', enum: EXPENSE_ACCOUNTS },
+      categoryId: { type: 'integer', minimum: 1 },
       from: { type: 'string', pattern: isoDatePattern.source },
       to: { type: 'string', pattern: isoDatePattern.source },
       search: { type: 'string', minLength: 1 },
+      subcategoryId: { type: 'integer', minimum: 1 },
       limit: { type: 'integer', minimum: 1, maximum: 500, default: 100 },
       offset: { type: 'integer', minimum: 0, default: 0 },
     },

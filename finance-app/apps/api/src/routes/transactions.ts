@@ -12,7 +12,9 @@ type TransactionRow = {
   date: string;
   amount: string;
   description: string | null;
+  category_id: number;
   category: string;
+  subcategory_id: number | null;
   subcategory: string | null;
   account: ExpenseAccount | null;
   type: TransactionType;
@@ -41,6 +43,16 @@ export async function registerTransactionRoutes(
       if (query.account) {
         values.push(query.account);
         filters.push(`account = $${values.length}`);
+      }
+
+      if (query.categoryId !== undefined) {
+        values.push(query.categoryId);
+        filters.push(`category_id = $${values.length}`);
+      }
+
+      if (query.subcategoryId !== undefined) {
+        values.push(query.subcategoryId);
+        filters.push(`subcategory_id = $${values.length}`);
       }
 
       if (query.from) {
@@ -74,7 +86,9 @@ export async function registerTransactionRoutes(
               expenses.date,
               expenses.amount,
               expenses.description,
+              expenses.category_id,
               categories.name as category,
+              expenses.subcategory_id,
               subcategories.name as subcategory,
               expenses.account,
               'expense' as type
@@ -89,7 +103,9 @@ export async function registerTransactionRoutes(
               income.date,
               income.amount,
               income.description,
+              income.category_id,
               categories.name as category,
+              income.subcategory_id,
               subcategories.name as subcategory,
               income.account,
               'income' as type
@@ -102,7 +118,9 @@ export async function registerTransactionRoutes(
             to_char(date, 'YYYY-MM-DD') as date,
             amount::numeric(12, 2)::text as amount,
             description,
+            category_id,
             category,
+            subcategory_id,
             subcategory,
             account,
             type
