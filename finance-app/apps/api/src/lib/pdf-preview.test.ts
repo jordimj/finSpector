@@ -102,6 +102,7 @@ describe('suggestTransactionCategory', () => {
 
     assert.equal(suggestion.suggestedCategory, 'MENJAR');
     assert.equal(suggestion.suggestedSubcategory, 'Supermercat');
+    assert.equal(suggestion.suggestedDescription, 'Bonpreu supermarket');
     assert.equal(suggestion.matchedAmount, '17.25');
     assert.ok(suggestion.confidence >= 70);
   });
@@ -143,6 +144,7 @@ describe('suggestTransactionCategory', () => {
 
     assert.equal(suggestion.suggestedCategory, 'MENJAR');
     assert.equal(suggestion.suggestedSubcategory, 'Supermercat');
+    assert.equal(suggestion.suggestedDescription, 'Edited grocery description');
     assert.equal(suggestion.matchedDescription, 'COMPRA TARGETA LIDL BARCELONA');
     assert.match(suggestion.matchReason, /bank concept/);
   });
@@ -161,5 +163,6 @@ describe('suggestTransactionCategory', () => {
 
     assert.equal(suggestion.suggestedCategory, null);
     assert.equal(suggestion.suggestedSubcategory, null);
+    assert.equal(suggestion.suggestedDescription, null);
   });
 });

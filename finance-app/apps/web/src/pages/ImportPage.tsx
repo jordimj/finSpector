@@ -20,6 +20,7 @@ import {
 import { useCategories, type Category } from '../hooks/useCategories';
 import { apiBaseUrl } from '../lib/api';
 import { cn } from '../lib/utils';
+import { formatTransactionAmount } from '../utils';
 
 type ImportPreviewRow = {
   date: string;
@@ -28,6 +29,7 @@ type ImportPreviewRow = {
   amount: string;
   type: 'expense' | 'income';
   rawText: string;
+  suggestedDescription: string | null;
   suggestedCategory: string | null;
   suggestedSubcategory: string | null;
   confidence: number;
@@ -65,16 +67,33 @@ type ExportCsvRow = {
 
 type ExportCsvMode = 'all' | ImportPreviewRow['type'];
 
+type ExportCsvPeriod =
+  | {
+      type: 'all';
+    }
+  | {
+      type: 'month';
+      month: string;
+    };
+
+type ExportMonthOption = {
+  label: string;
+  month: string;
+};
+
 type ImportReviewDraft = {
   version: typeof importReviewDraftVersion;
   sourceFileName: string;
   rows: ImportReviewRow[];
   exportCsvMode: ExportCsvMode;
+  exportCsvPeriod: ExportCsvPeriod;
   updatedAt: string;
 };
 
 const importReviewDraftVersion = 1;
 const importReviewDraftStorageKey = 'finance.importAssistant.reviewDraft.v1';
+const allExportCsvPeriod: ExportCsvPeriod = { type: 'all' };
+const exportMonthPattern = /^\d{4}-\d{2}$/;
 
 const csvHeaders: Array<keyof ExportCsvRow> = [
   'date',
@@ -123,6 +142,9 @@ export function ImportPage() {
   const [exportCsvMode, setExportCsvMode] = useState<ExportCsvMode>(
     initialDraft?.exportCsvMode ?? 'all',
   );
+  const [exportCsvPeriod, setExportCsvPeriod] = useState<ExportCsvPeriod>(
+    initialDraft?.exportCsvPeriod ?? allExportCsvPeriod,
+  );
   const [draftUpdatedAt, setDraftUpdatedAt] = useState<string | null>(
     initialDraft?.updatedAt ?? null,
   );
@@ -152,9 +174,16 @@ export function ImportPage() {
     () => rows.filter((row) => row.skipped === true).length,
     [rows],
   );
+  const exportMonthOptions = useMemo(
+    () => buildExportMonthOptions(rows),
+    [rows],
+  );
   const exportableRowCount = useMemo(
-    () => rows.filter((row) => isExportedReviewRow(row, exportCsvMode)).length,
-    [exportCsvMode, rows],
+    () =>
+      rows.filter((row) =>
+        isExportedReviewRow(row, exportCsvMode, exportCsvPeriod),
+      ).length,
+    [exportCsvMode, exportCsvPeriod, rows],
   );
   const matchingRowCounts = useMemo(() => {
     const counts = new Map<string, number>();
@@ -179,6 +208,7 @@ export function ImportPage() {
 
     const updatedAt = saveImportReviewDraft({
       exportCsvMode,
+      exportCsvPeriod,
       rows,
       sourceFileName,
     });
@@ -186,7 +216,7 @@ export function ImportPage() {
     if (updatedAt !== null) {
       setDraftUpdatedAt(updatedAt);
     }
-  }, [exportCsvMode, rows, sourceFileName]);
+  }, [exportCsvMode, exportCsvPeriod, rows, sourceFileName]);
 
   function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
     const selectedFile = event.target.files?.[0] ?? null;
@@ -245,6 +275,7 @@ export function ImportPage() {
         setRows(reviewRows);
         setTextPreview(preview.textPreview);
         setExportCsvMode('all');
+        setExportCsvPeriod(allExportCsvPeriod);
         setDraftUpdatedAt(null);
 
         if (reviewRows.length === 0) {
@@ -264,18 +295,23 @@ export function ImportPage() {
     setRows([]);
     setTextPreview('');
     setExportCsvMode('all');
+    setExportCsvPeriod(allExportCsvPeriod);
     setDraftUpdatedAt(null);
     previewMutation.reset();
   }
 
   function handleDownloadCsv() {
-    const csv = toReviewCsv(rows, exportCsvMode);
+    const csv = toReviewCsv(rows, exportCsvMode, exportCsvPeriod);
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
 
     link.href = url;
-    link.download = buildDownloadName(sourceFileName, exportCsvMode);
+    link.download = buildDownloadName(
+      sourceFileName,
+      exportCsvMode,
+      exportCsvPeriod,
+    );
     link.click();
     URL.revokeObjectURL(url);
   }
@@ -328,6 +364,14 @@ export function ImportPage() {
     );
   }
 
+  function markReviewedRow(index: number) {
+    setRows((currentRows) =>
+      currentRows.map((row, rowIndex) =>
+        rowIndex === index ? { ...row, reviewed: true } : row,
+      ),
+    );
+  }
+
   return (
     <section className='mx-auto flex h-full min-h-0 max-h-screen max-w-[1600px] flex-col gap-3'>
       <div className='flex shrink-0 flex-col gap-3 lg:flex-row lg:items-end lg:justify-between'>
@@ -356,6 +400,23 @@ export function ImportPage() {
               ))}
             </select>
 
+            <select
+              className='h-10 rounded-md border border-line bg-panel px-3 text-sm font-semibold text-muted-strong outline-none transition focus:border-accent-lavender focus:ring-2 focus:ring-accent-lavender/25'
+              value={exportCsvPeriodToSelectValue(exportCsvPeriod)}
+              onChange={(event) =>
+                setExportCsvPeriod(
+                  exportCsvPeriodFromSelectValue(event.target.value),
+                )
+              }
+            >
+              <option value='all'>All dates</option>
+              {exportMonthOptions.map((option) => (
+                <option key={option.month} value={`month:${option.month}`}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+
             <button
               type='button'
               className='inline-flex h-10 items-center justify-center gap-2 rounded-md border border-line bg-panel-raised px-4 text-sm font-semibold text-muted-strong transition hover:text-ink disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-lavender'
@@ -368,7 +429,7 @@ export function ImportPage() {
               }
             >
               <Download className='size-4' aria-hidden='true' />
-              Download CSV
+              Download CSV ({exportableRowCount})
             </button>
           </div>
         )}
@@ -506,16 +567,15 @@ export function ImportPage() {
       </div>
 
       <div className='flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-line bg-panel shadow-shell'>
-        <div className='grid grid-cols-[7rem_minmax(10rem,0.8fr)_minmax(16rem,1.4fr)_7rem_6rem_minmax(15rem,1fr)_7rem_minmax(14rem,1fr)_3rem] gap-4 border-b border-line px-5 py-3 text-xs font-bold uppercase tracking-[0.14em] text-muted'>
+        <div className='grid grid-cols-[7rem_minmax(10rem,0.8fr)_minmax(16rem,1.4fr)_8rem_minmax(15rem,1fr)_7rem_minmax(14rem,1fr)_6rem] gap-4 border-b border-line px-5 py-3 text-xs font-bold uppercase tracking-[0.14em] text-muted'>
           <span>Date</span>
           <span>Concept</span>
           <span>Description</span>
           <span>Amount</span>
-          <span>Type</span>
           <span>Category</span>
           <span>Status</span>
           <span>Evidence</span>
-          <span className='sr-only'>Skip</span>
+          <span className='sr-only'>Actions</span>
         </div>
 
         <div className='min-h-0 flex-1 overflow-auto'>
@@ -537,6 +597,7 @@ export function ImportPage() {
                   matchingCount={matchingRowCounts[index] ?? 1}
                   row={row}
                   onChange={updateReviewRows}
+                  onMarkReviewed={markReviewedRow}
                   onReset={resetReviewRows}
                   onToggleSkipped={toggleSkippedRow}
                 />
@@ -595,6 +656,7 @@ function PreviewRow({
   matchingCount,
   row,
   onChange,
+  onMarkReviewed,
   onReset,
   onToggleSkipped,
 }: {
@@ -604,6 +666,7 @@ function PreviewRow({
   matchingCount: number;
   row: ImportReviewRow;
   onChange: (index: number, changes: Partial<ImportPreviewRow>) => void;
+  onMarkReviewed: (index: number) => void;
   onReset: (index: number) => void;
   onToggleSkipped: (index: number) => void;
 }) {
@@ -623,7 +686,7 @@ function PreviewRow({
   return (
     <div
       className={cn(
-        'grid min-w-[1380px] grid-cols-[7rem_minmax(10rem,0.8fr)_minmax(16rem,1.4fr)_7rem_6rem_minmax(15rem,1fr)_7rem_minmax(14rem,1fr)_3rem] gap-4 px-5 py-4 text-sm transition',
+        'grid min-w-[1340px] grid-cols-[7rem_minmax(10rem,0.8fr)_minmax(16rem,1.4fr)_8rem_minmax(15rem,1fr)_7rem_minmax(14rem,1fr)_6rem] gap-4 px-5 py-4 text-sm transition',
         isSkipped && 'bg-panel-raised/35 opacity-55',
       )}
     >
@@ -648,21 +711,19 @@ function PreviewRow({
             onChange(index, { description: event.target.value })
           }
         />
-        {row.reviewed === true &&
-        row.description !== row.originalDescription ? (
+        {row.description !== row.originalDescription ? (
           <span className='mt-1 block line-clamp-2 text-xs font-medium text-muted'>
             Original: {row.originalDescription}
           </span>
         ) : null}
       </label>
-      <span className='font-semibold text-ink'>{row.amount}</span>
       <span
         className={cn(
-          'font-semibold',
+          'font-semibold tabular-nums',
           row.type === 'income' ? 'text-accent-green' : 'text-accent-rose',
         )}
       >
-        {row.type}
+        {formatTransactionAmount(row)}
       </span>
       <span className='grid min-w-0 gap-2'>
         <label>
@@ -760,7 +821,29 @@ function PreviewRow({
             : row.matchReason}
         </span>
       </span>
-      <span className='flex justify-end'>
+      <span className='flex justify-end gap-2'>
+        <button
+          className={cn(
+            'inline-flex size-9 items-center justify-center rounded-md border border-line bg-panel-raised text-muted-strong transition hover:text-ink disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-lavender',
+            row.reviewed === true &&
+              'border-accent-green/30 bg-accent-green/15 text-accent-green hover:text-accent-green',
+          )}
+          disabled={isSkipped}
+          onClick={() => onMarkReviewed(index)}
+          title={
+            isSkipped
+              ? 'Skipped rows are excluded from CSV'
+              : row.reviewed === true
+                ? 'Row reviewed'
+                : 'Mark row as reviewed'
+          }
+          type='button'
+          aria-label={
+            row.reviewed === true ? 'Row reviewed' : 'Mark row as reviewed'
+          }
+        >
+          <CheckCircle2 className='size-4' aria-hidden='true' />
+        </button>
         <button
           className={cn(
             'inline-flex size-9 items-center justify-center rounded-md border border-line bg-panel-raised text-muted-strong transition hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-lavender',
@@ -782,8 +865,14 @@ function PreviewRow({
 }
 
 function toImportReviewRow(row: ImportPreviewRow): ImportReviewRow {
+  const suggestedDescription =
+    row.suggestedDescription === null
+      ? row.description
+      : row.suggestedDescription;
+
   return {
     ...row,
+    description: suggestedDescription,
     originalDescription: row.description,
     originalSuggestedCategory: row.suggestedCategory,
     originalSuggestedSubcategory: row.suggestedSubcategory,
@@ -833,10 +922,12 @@ function loadImportReviewDraft(): ImportReviewDraft | null {
 
 function saveImportReviewDraft({
   exportCsvMode,
+  exportCsvPeriod,
   rows,
   sourceFileName,
 }: {
   exportCsvMode: ExportCsvMode;
+  exportCsvPeriod: ExportCsvPeriod;
   rows: ImportReviewRow[];
   sourceFileName: string;
 }): string | null {
@@ -847,6 +938,7 @@ function saveImportReviewDraft({
   const updatedAt = new Date().toISOString();
   const draft: ImportReviewDraft = {
     exportCsvMode,
+    exportCsvPeriod,
     rows,
     sourceFileName,
     updatedAt,
@@ -893,6 +985,7 @@ function normalizeImportReviewDraft(value: unknown): ImportReviewDraft | null {
     exportCsvMode: isExportCsvMode(value.exportCsvMode)
       ? value.exportCsvMode
       : 'all',
+    exportCsvPeriod: normalizeExportCsvPeriod(value.exportCsvPeriod, rows),
     rows,
     sourceFileName,
     updatedAt: toValidIsoDate(value.updatedAt) ?? new Date().toISOString(),
@@ -959,12 +1052,32 @@ function normalizeImportReviewRow(value: unknown): ImportReviewRow | null {
     originalSuggestedSubcategory,
     rawText: toText(value.rawText),
     skipped: value.skipped === true ? true : undefined,
+    suggestedDescription: toNullableText(value.suggestedDescription),
     suggestedCategory: toNullableText(value.suggestedCategory),
     suggestedSubcategory: toNullableText(value.suggestedSubcategory),
     reviewed: value.reviewed === true ? true : undefined,
     type,
     ...(concept === undefined ? {} : { concept }),
   };
+}
+
+function normalizeExportCsvPeriod(
+  value: unknown,
+  rows: ImportReviewRow[],
+): ExportCsvPeriod {
+  if (!isRecord(value) || value.type !== 'month') {
+    return allExportCsvPeriod;
+  }
+
+  const month = toText(value.month);
+
+  if (!exportMonthPattern.test(month)) {
+    return allExportCsvPeriod;
+  }
+
+  const hasMonth = rows.some((row) => getReviewRowMonth(row) === month);
+
+  return hasMonth ? { type: 'month', month } : allExportCsvPeriod;
 }
 
 async function fetchImportPreview(file: File): Promise<ImportPreviewResponse> {
@@ -997,7 +1110,7 @@ async function fetchImportPreview(file: File): Promise<ImportPreviewResponse> {
 function resetImportReviewRow(row: ImportReviewRow): ImportReviewRow {
   return {
     ...row,
-    description: row.originalDescription,
+    description: row.suggestedDescription ?? row.originalDescription,
     suggestedCategory: row.originalSuggestedCategory,
     suggestedSubcategory: row.originalSuggestedSubcategory,
     reviewed: undefined,
@@ -1015,12 +1128,90 @@ function formatCategorySuggestion(
   return subcategory === null ? category : `${category} / ${subcategory}`;
 }
 
+function buildExportMonthOptions(rows: ImportReviewRow[]): ExportMonthOption[] {
+  const countsByMonth = new Map<string, number>();
+
+  for (const row of rows) {
+    const month = getReviewRowMonth(row);
+
+    if (month === null) {
+      continue;
+    }
+
+    countsByMonth.set(month, (countsByMonth.get(month) ?? 0) + 1);
+  }
+
+  return Array.from(countsByMonth.entries())
+    .sort(([firstMonth], [secondMonth]) => firstMonth.localeCompare(secondMonth))
+    .map(([month, rowCount]) => ({
+      label: `${formatExportMonth(month)} (${rowCount} ${
+        rowCount === 1 ? 'row' : 'rows'
+      })`,
+      month,
+    }));
+}
+
+function exportCsvPeriodToSelectValue(period: ExportCsvPeriod): string {
+  return period.type === 'all' ? 'all' : `month:${period.month}`;
+}
+
+function exportCsvPeriodFromSelectValue(value: string): ExportCsvPeriod {
+  if (!value.startsWith('month:')) {
+    return allExportCsvPeriod;
+  }
+
+  const month = value.slice('month:'.length);
+
+  return exportMonthPattern.test(month)
+    ? {
+        month,
+        type: 'month',
+      }
+    : allExportCsvPeriod;
+}
+
+function matchesExportPeriod(
+  row: ImportReviewRow,
+  period: ExportCsvPeriod,
+): boolean {
+  if (period.type === 'all') {
+    return true;
+  }
+
+  return getReviewRowMonth(row) === period.month;
+}
+
+function getReviewRowMonth(row: ImportReviewRow): string | null {
+  const trimmedDate = row.date.trim();
+
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(trimmedDate)) {
+    return null;
+  }
+
+  return trimmedDate.slice(0, 7);
+}
+
+function formatExportMonth(month: string): string {
+  const date = new Date(`${month}-01T00:00:00Z`);
+
+  if (!Number.isFinite(date.getTime())) {
+    return month;
+  }
+
+  return date.toLocaleString(undefined, {
+    month: 'long',
+    timeZone: 'UTC',
+    year: 'numeric',
+  });
+}
+
 function toReviewCsv(
   rows: ImportReviewRow[],
   exportMode: ExportCsvMode,
+  exportPeriod: ExportCsvPeriod,
 ): string {
   const exportableRows = rows
-    .filter((row) => isExportedReviewRow(row, exportMode))
+    .filter((row) => isExportedReviewRow(row, exportMode, exportPeriod))
     .reverse();
 
   return [
@@ -1038,9 +1229,12 @@ function toReviewCsv(
 function isExportedReviewRow(
   row: ImportReviewRow,
   exportMode: ExportCsvMode,
+  exportPeriod: ExportCsvPeriod,
 ): boolean {
   return (
-    row.skipped !== true && (exportMode === 'all' || row.type === exportMode)
+    row.skipped !== true &&
+    (exportMode === 'all' || row.type === exportMode) &&
+    matchesExportPeriod(row, exportPeriod)
   );
 }
 
@@ -1106,10 +1300,15 @@ function normalizeReviewText(value: string): string {
 function buildDownloadName(
   fileName: string | null | undefined,
   exportMode: ExportCsvMode,
+  exportPeriod: ExportCsvPeriod,
 ): string {
   const baseName =
     fileName?.replace(/\.(pdf|xls|xlsx|xlsm)$/i, '') || 'import-preview';
-  const suffix = exportMode === 'all' ? 'review' : `${exportMode}-review`;
+  const modeSuffix = exportMode === 'all' ? 'review' : `${exportMode}-review`;
+  const suffix =
+    exportPeriod.type === 'all'
+      ? modeSuffix
+      : `${exportPeriod.month}-${modeSuffix}`;
 
   return `${baseName}-${suffix}.csv`;
 }

@@ -43,6 +43,7 @@ describe('registerImportRoutes', () => {
       rowCount: number;
       textPreview: string;
       rows: Array<{
+        suggestedDescription: string | null;
         suggestedCategory: string | null;
         suggestedSubcategory: string | null;
       }>;
@@ -51,6 +52,7 @@ describe('registerImportRoutes', () => {
     assert.equal(payload.rowCount, 1);
     assert.ok(payload.extractedTextLength > 0);
     assert.match(payload.textPreview, /BONPREU MARKET/);
+    assert.equal(payload.rows[0]?.suggestedDescription, 'Bonpreu supermarket');
     assert.equal(payload.rows[0]?.suggestedCategory, 'MENJAR');
     assert.equal(payload.rows[0]?.suggestedSubcategory, 'Supermercat');
 
@@ -85,6 +87,7 @@ describe('registerImportRoutes', () => {
         concept?: string;
         description: string;
         type: 'expense' | 'income';
+        suggestedDescription: string | null;
         suggestedCategory: string | null;
         suggestedSubcategory: string | null;
       }>;
@@ -94,6 +97,7 @@ describe('registerImportRoutes', () => {
     assert.equal(payload.rows[0]?.concept, 'Compra tarjeta');
     assert.equal(payload.rows[0]?.description, 'Bonpreu supermarket');
     assert.equal(payload.rows[0]?.type, 'income');
+    assert.equal(payload.rows[0]?.suggestedDescription, 'Bonpreu supermarket');
     assert.equal(payload.rows[0]?.suggestedCategory, 'MENJAR');
     assert.equal(payload.rows[0]?.suggestedSubcategory, 'Supermercat');
 

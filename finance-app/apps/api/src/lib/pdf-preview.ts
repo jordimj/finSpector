@@ -33,6 +33,7 @@ export type HistoricalTransaction = {
 };
 
 export type PdfPreviewRow = ExtractedPdfTransaction & {
+  suggestedDescription: string | null;
   suggestedCategory: string | null;
   suggestedSubcategory: string | null;
   confidence: number;
@@ -236,6 +237,7 @@ export function suggestTransactionCategory(
   if (!bestMatch) {
     return {
       ...row,
+      suggestedDescription: null,
       suggestedCategory: null,
       suggestedSubcategory: null,
       confidence: 0,
@@ -251,6 +253,9 @@ export function suggestTransactionCategory(
 
   return {
     ...row,
+    suggestedDescription: isConfident
+      ? bestMatch.candidate.description
+      : null,
     suggestedCategory: isConfident ? bestMatch.candidate.category : null,
     suggestedSubcategory: isConfident
       ? bestMatch.candidate.subcategory

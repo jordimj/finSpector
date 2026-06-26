@@ -211,7 +211,9 @@ export function formatTransactionDate(
   }).format(parseDateKey(date));
 }
 
-export function formatTransactionAmount(transaction: Transaction): string {
+export function formatTransactionAmount(
+  transaction: Pick<Transaction, 'amount' | 'type'>,
+): string {
   const amount = Number(transaction.amount);
   const prefix = transaction.type === 'income' ? '+' : '-';
 
