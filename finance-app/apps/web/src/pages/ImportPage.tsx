@@ -575,15 +575,13 @@ export function ImportPage() {
       </div>
 
       <div className='flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-line bg-panel shadow-shell'>
-        <div className='grid grid-cols-[7rem_minmax(10rem,0.8fr)_minmax(16rem,1.4fr)_8rem_minmax(15rem,1fr)_7rem_minmax(14rem,1fr)_6rem] gap-4 border-b border-line px-5 py-3 text-xs font-bold uppercase tracking-[0.14em] text-muted'>
+        <div className='grid min-w-[1160px] grid-cols-[6.5rem_minmax(16rem,1fr)_7.5rem_minmax(14rem,0.9fr)_minmax(20rem,1.45fr)_6.75rem] gap-4 border-b border-line px-5 py-3 text-xs font-bold uppercase tracking-[0.14em] text-muted'>
           <span>Date</span>
-          <span>Concept</span>
-          <span>Description</span>
+          <span>Transaction</span>
           <span>Amount</span>
           <span>Category</span>
-          <span>Status</span>
-          <span>Evidence</span>
-          <span className='sr-only'>Actions</span>
+          <span>Match</span>
+          <span>Actions</span>
         </div>
 
         <div className='min-h-0 flex-1 overflow-auto'>
@@ -691,6 +689,8 @@ function PreviewRow({
   const subcategoryOptions = subcategories.map(
     (subcategory) => subcategory.name,
   );
+  const hasReviewChanges = hasImportReviewChanges(row);
+  const canReset = row.reviewed === true || hasReviewChanges;
 
   function updateCategory(categoryName: string) {
     onChange(index, {
@@ -702,46 +702,54 @@ function PreviewRow({
   return (
     <div
       className={cn(
-        'grid min-w-[1340px] grid-cols-[7rem_minmax(10rem,0.8fr)_minmax(16rem,1.4fr)_8rem_minmax(15rem,1fr)_7rem_minmax(14rem,1fr)_6rem] gap-4 px-5 py-4 text-sm transition',
-        isSkipped && 'bg-panel-raised/35 opacity-55',
+        'grid min-w-[1160px] grid-cols-[6.5rem_minmax(16rem,1fr)_7.5rem_minmax(14rem,0.9fr)_minmax(20rem,1.45fr)_6.75rem] items-center gap-4 border-l-2 border-transparent px-5 py-4 text-sm transition-colors hover:bg-canvas/35',
+        row.reviewed === true &&
+          !isSkipped &&
+          'border-l-accent-green/70 bg-accent-green/[0.03] hover:bg-accent-green/[0.06]',
+        isSkipped &&
+          'border-l-accent-rose/60 bg-panel-raised/35 opacity-60 hover:bg-panel-raised/55',
       )}
     >
-      <span className='font-medium text-muted-strong'>{row.date}</span>
-      <span className='min-w-0 text-muted-strong'>
-        <span className='line-clamp-2'>{row.concept ?? '-'}</span>
-        {matchingCount > 1 ? (
-          <span className='mt-1 block text-xs font-semibold text-accent-lavender'>
-            {applyToMatchingRows
-              ? `Updates ${matchingCount} matching rows`
-              : `${matchingCount} matching rows`}
+      <span className='font-medium leading-8 text-muted-strong'>{row.date}</span>
+      <span className='grid min-w-0 gap-1.5'>
+        <span className='flex min-w-0 items-center gap-2'>
+          <span className='line-clamp-1 text-xs font-semibold uppercase tracking-[0.1em] text-muted'>
+            {row.concept ?? 'No concept'}
           </span>
-        ) : null}
-      </span>
-      <label className='min-w-0'>
-        <span className='sr-only'>Description</span>
-        <textarea
-          className='min-h-16 w-full resize-y rounded-md border border-line bg-panel-raised px-3 py-2 text-sm font-medium leading-5 text-ink outline-none transition focus:border-accent-lavender focus:ring-2 focus:ring-accent-lavender/25 disabled:cursor-not-allowed disabled:opacity-70'
-          disabled={isSkipped}
-          value={row.description}
-          onChange={(event) =>
-            onChange(index, { description: event.target.value })
-          }
-        />
+          {matchingCount > 1 ? (
+            <span className='inline-flex h-5 shrink-0 items-center rounded-full bg-accent-lavender/10 px-2 text-[11px] font-bold text-accent-lavender'>
+              {applyToMatchingRows
+                ? `${matchingCount} linked`
+                : `${matchingCount} matches`}
+            </span>
+          ) : null}
+        </span>
+        <label className='min-w-0'>
+          <span className='sr-only'>Description</span>
+          <input
+            className='h-8 w-full rounded-md border border-line bg-panel-raised px-3 text-sm font-medium text-ink outline-none transition focus:border-accent-lavender focus:ring-2 focus:ring-accent-lavender/25 disabled:cursor-not-allowed disabled:opacity-70'
+            disabled={isSkipped}
+            value={row.description}
+            onChange={(event) =>
+              onChange(index, { description: event.target.value })
+            }
+          />
+        </label>
         {row.description !== row.originalDescription ? (
-          <span className='mt-1 block line-clamp-2 text-xs font-medium text-muted'>
+          <span className='line-clamp-1 text-xs font-medium text-muted'>
             Original: {row.originalDescription}
           </span>
         ) : null}
-      </label>
+      </span>
       <span
         className={cn(
-          'font-semibold tabular-nums',
+          'justify-self-end text-right font-semibold leading-8 tabular-nums',
           row.type === 'income' ? 'text-accent-green' : 'text-accent-rose',
         )}
       >
         {formatTransactionAmount(row)}
       </span>
-      <span className='grid min-w-0 gap-2'>
+      <span className='grid min-w-0 gap-1.5'>
         <EditableSuggestionInput
           id={categoryInputId}
           label='Category'
@@ -773,7 +781,7 @@ function PreviewRow({
         {row.reviewed === true &&
         (row.suggestedCategory !== row.originalSuggestedCategory ||
           row.suggestedSubcategory !== row.originalSuggestedSubcategory) ? (
-          <span className='text-xs font-medium leading-5 text-muted'>
+          <span className='line-clamp-1 text-xs font-medium leading-5 text-muted'>
             Original:{' '}
             {formatCategorySuggestion(
               row.originalSuggestedCategory,
@@ -782,54 +790,32 @@ function PreviewRow({
           </span>
         ) : null}
       </span>
-      <span>
-        {isSkipped ? (
-          <span className='inline-flex h-7 w-fit items-center gap-1.5 rounded-full bg-panel-raised px-2.5 text-xs font-bold text-muted'>
-            <Ban className='size-4' aria-hidden='true' />
-            Skipped
-          </span>
-        ) : row.reviewed === true ? (
-          <span className='grid gap-2'>
-            <span className='inline-flex h-7 w-fit items-center gap-1.5 rounded-full bg-accent-green/15 px-2.5 text-xs font-bold text-accent-green'>
-              <CheckCircle2 className='size-4' aria-hidden='true' />
-              Reviewed
-            </span>
-            <button
-              className='inline-flex h-8 w-fit items-center gap-1.5 rounded-md border border-line bg-panel-raised px-2.5 text-xs font-semibold text-muted-strong transition hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-lavender'
-              onClick={() => onReset(index)}
-              type='button'
-            >
-              <RotateCcw className='size-3.5' aria-hidden='true' />
-              Reset
-            </button>
-          </span>
-        ) : (
+      <span className='grid min-w-0 gap-1.5 text-muted'>
+        <span className='flex min-w-0 items-center gap-2'>
           <span
             className={cn(
-              'inline-flex h-6 items-center rounded-full px-2 text-xs font-bold',
-              row.confidence >= 70 && 'bg-accent-green/15 text-accent-green',
-              row.confidence >= 55 &&
-                row.confidence < 70 &&
-                'bg-accent-amber/15 text-accent-amber',
-              row.confidence < 55 && 'bg-panel-raised text-muted',
+              'inline-flex h-5 shrink-0 items-center rounded-full px-2 text-[11px] font-bold',
+              getConfidenceBadgeClassName(row.confidence),
             )}
           >
             {row.confidence}%
           </span>
-        )}
-      </span>
-      <span className='min-w-0 text-muted'>
-        <span className='line-clamp-2'>
-          {row.matchedDescription
-            ? `${row.matchReason} - ${row.matchedDescription}`
-            : row.matchReason}
+          <span className='line-clamp-1 text-xs font-semibold text-muted-strong'>
+            {row.matchReason}
+          </span>
         </span>
+        {row.matchedDescription ? (
+          <span className='line-clamp-2 text-xs leading-5 text-muted'>
+            {row.matchedDescription}
+          </span>
+        ) : null}
       </span>
-      <span className='flex justify-end gap-2'>
+      <span className='flex justify-end gap-1.5'>
         <button
           className={cn(
-            'inline-flex size-9 items-center justify-center rounded-md border border-line bg-panel-raised text-muted-strong transition hover:text-ink disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-lavender',
+            'inline-flex size-8 items-center justify-center rounded-md border border-line bg-panel-raised text-muted-strong transition hover:text-ink disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-lavender',
             row.reviewed === true &&
+              !isSkipped &&
               'border-accent-green/30 bg-accent-green/15 text-accent-green hover:text-accent-green',
           )}
           disabled={isSkipped}
@@ -850,7 +836,7 @@ function PreviewRow({
         </button>
         <button
           className={cn(
-            'inline-flex size-9 items-center justify-center rounded-md border border-line bg-panel-raised text-muted-strong transition hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-lavender',
+            'inline-flex size-8 items-center justify-center rounded-md border border-line bg-panel-raised text-muted-strong transition hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-lavender',
             isSkipped &&
               'border-accent-rose/30 bg-accent-rose/10 text-accent-rose hover:text-accent-rose',
           )}
@@ -863,9 +849,47 @@ function PreviewRow({
         >
           <Ban className='size-4' aria-hidden='true' />
         </button>
+        <button
+          className='inline-flex size-8 items-center justify-center rounded-md border border-line bg-panel-raised text-muted-strong transition hover:text-ink disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-lavender'
+          disabled={isSkipped || !canReset}
+          onClick={() => onReset(index)}
+          title={
+            isSkipped
+              ? 'Include this row before resetting'
+              : canReset
+                ? 'Reset row review'
+                : 'No reviewed changes to reset'
+          }
+          type='button'
+          aria-label='Reset row review'
+        >
+          <RotateCcw className='size-4' aria-hidden='true' />
+        </button>
       </span>
     </div>
   );
+}
+
+function hasImportReviewChanges(row: ImportReviewRow): boolean {
+  const baselineDescription = row.suggestedDescription ?? row.originalDescription;
+
+  return (
+    row.description !== baselineDescription ||
+    row.suggestedCategory !== row.originalSuggestedCategory ||
+    row.suggestedSubcategory !== row.originalSuggestedSubcategory
+  );
+}
+
+function getConfidenceBadgeClassName(confidence: number): string {
+  if (confidence >= 70) {
+    return 'bg-accent-green/15 text-accent-green';
+  }
+
+  if (confidence >= 55) {
+    return 'bg-accent-amber/15 text-accent-amber';
+  }
+
+  return 'bg-panel-raised text-muted';
 }
 
 function EditableSuggestionInput({
@@ -952,7 +976,7 @@ function EditableSuggestionInput({
       <input
         autoComplete='off'
         className={cn(
-          'h-9 w-full rounded-md border border-line bg-panel-raised px-3 text-sm outline-none transition focus:border-accent-lavender focus:ring-2 focus:ring-accent-lavender/25 disabled:cursor-not-allowed disabled:opacity-70',
+          'h-8 w-full rounded-md border border-line bg-panel-raised px-3 text-sm outline-none transition focus:border-accent-lavender focus:ring-2 focus:ring-accent-lavender/25 disabled:cursor-not-allowed disabled:opacity-70',
           className,
         )}
         disabled={disabled}
@@ -968,12 +992,12 @@ function EditableSuggestionInput({
         onKeyDown={handleKeyDown}
       />
       {showOptions ? (
-        <div className='absolute left-0 right-0 top-full z-40 mt-1 max-h-36 overflow-y-auto rounded-md border border-line bg-panel py-1 shadow-shell'>
+        <div className='absolute left-0 right-0 top-full z-40 mt-1 max-h-32 overflow-y-auto rounded-md border border-line bg-panel py-1 shadow-shell'>
           {visibleOptions.map((option, optionIndex) => (
             <button
               key={option}
               className={cn(
-                'flex min-h-8 w-full items-center px-3 py-1.5 text-left text-sm font-medium text-muted-strong outline-none transition hover:bg-accent-lavender/10 hover:text-ink',
+                'flex min-h-7 w-full items-center px-3 py-1 text-left text-xs font-semibold text-muted-strong outline-none transition hover:bg-accent-lavender/10 hover:text-ink',
                 optionIndex === highlightedIndex &&
                   'bg-accent-lavender/10 text-ink',
               )}
