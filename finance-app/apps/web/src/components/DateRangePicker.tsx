@@ -12,9 +12,15 @@ import {
   getLastThirtyDaysRange,
   getLastTwelveMonthsRange,
   getLastYearRange,
+  getTodayRange,
 } from '../utils';
 
 export const dateRangePresets = [
+  {
+    key: 'today',
+    label: 'Today',
+    getRange: () => getTodayRange(),
+  },
   {
     key: 'this-month',
     label: 'This month',
@@ -80,8 +86,11 @@ export function DateRangePicker({
   const [isOpen, setIsOpen] = useState(false);
   const pickerRef = useRef<HTMLDivElement>(null);
   const periodLabel = formatReportDateRange(dateRange, { includeYear: true });
+  const matchingPresetKey =
+    selectedPresetKey === null ? getMatchingDateRangePresetKey(dateRange) : null;
+  const activePresetKey = selectedPresetKey ?? matchingPresetKey;
   const selectedPreset = dateRangePresets.find(
-    (preset) => preset.key === selectedPresetKey,
+    (preset) => preset.key === activePresetKey,
   );
   const buttonLabel = selectedPreset?.label ?? periodLabel;
   const dialogId = `${id}-date-range-picker`;
@@ -137,7 +146,9 @@ export function DateRangePicker({
         ? startDate
         : dateRange.endDate;
 
-    onChange(buildReportDateRange(startDate, endDate), null);
+    const nextDateRange = buildReportDateRange(startDate, endDate);
+
+    onChange(nextDateRange, getMatchingDateRangePresetKey(nextDateRange));
   }
 
   function handleEndDateChange(endDateValue: string) {
@@ -148,7 +159,9 @@ export function DateRangePicker({
         ? endDate
         : dateRange.startDate;
 
-    onChange(buildReportDateRange(startDate, endDate), null);
+    const nextDateRange = buildReportDateRange(startDate, endDate);
+
+    onChange(nextDateRange, getMatchingDateRangePresetKey(nextDateRange));
   }
 
   return (
@@ -188,7 +201,7 @@ export function DateRangePicker({
               </p>
               <div className='grid grid-cols-2 gap-1 md:grid-cols-1'>
                 {dateRangePresets.map((preset) => {
-                  const isSelected = preset.key === selectedPresetKey;
+                  const isSelected = preset.key === activePresetKey;
 
                   return (
                     <button
@@ -266,4 +279,24 @@ function buildReportDateRange(
     ...(startDate !== undefined ? { startDate } : {}),
     ...(endDate !== undefined ? { endDate } : {}),
   };
+}
+
+function getMatchingDateRangePresetKey(
+  dateRange: ReportDateRange,
+): DateRangePresetKey | null {
+  const matchingPreset = dateRangePresets.find((preset) =>
+    isSameReportDateRange(dateRange, preset.getRange()),
+  );
+
+  return matchingPreset?.key ?? null;
+}
+
+function isSameReportDateRange(
+  leftRange: ReportDateRange,
+  rightRange: ReportDateRange,
+): boolean {
+  return (
+    leftRange.startDate === rightRange.startDate &&
+    leftRange.endDate === rightRange.endDate
+  );
 }

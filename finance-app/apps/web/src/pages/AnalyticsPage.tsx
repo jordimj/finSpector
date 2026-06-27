@@ -319,6 +319,7 @@ function getComparisonDateRange(
       return shiftReportDateRange(boundedRange, -12);
     case 'all-time':
       return undefined;
+    case 'today':
     case 'last-30-days':
     case null:
       return getPreviousEqualLengthRange(boundedRange);

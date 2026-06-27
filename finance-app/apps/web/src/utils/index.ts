@@ -1,6 +1,15 @@
 import type { Transaction } from '@finance/shared';
 import type { AccountFilter, DateRange, ReportDateRange } from '../types';
 
+export function getTodayRange(now = new Date()): DateRange {
+  const today = formatDateKey(now);
+
+  return {
+    startDate: today,
+    endDate: today,
+  };
+}
+
 export function getLastMonthRange(now = new Date()): DateRange {
   const start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
   const end = new Date(now.getFullYear(), now.getMonth(), 0);
