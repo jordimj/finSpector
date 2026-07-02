@@ -38,8 +38,6 @@ packages/
   shared/     Shared constants and TypeScript types
 ```
 
-The repository wrapper is one level up. Run project commands from `finance-app/`.
-
 ## Setup
 
 ```bash

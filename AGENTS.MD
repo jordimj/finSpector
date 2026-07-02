@@ -1,8 +1,6 @@
 # AGENTS.MD
 
-Working guide for agents in `/Users/jmiro/Documents/budget`.
-
-The actual app lives in `finance-app/`. Treat the repository root as a wrapper and run project commands from `finance-app/` unless a task explicitly says otherwise.
+Working guide for agents in this repository.
 
 ## Product Intent
 
@@ -33,19 +31,18 @@ Frontend, API, reminders, and PWA support already exist. Do not describe them as
 ## Repository Map
 
 ```text
-finance-app/
-  apps/
-    api/        Fastify API, route modules, domain helpers, tests
-    web/        React/Vite app, PWA assets, Tailwind UI
+apps/
+  api/        Fastify API, route modules, domain helpers, tests
+  web/        React/Vite app, PWA assets, Tailwind UI
 
-  packages/
-    analytics/  Local reporting scripts
-    db/         PostgreSQL client, Drizzle schema, SQL migrations
-    importer/   CSV-like script import pipeline
-    shared/     Shared constants, helpers, and TypeScript types
+packages/
+  analytics/  Local reporting scripts
+  db/         PostgreSQL client, Drizzle schema, SQL migrations
+  importer/   CSV-like script import pipeline
+  shared/     Shared constants, helpers, and TypeScript types
 ```
 
-There is also an ignored `finance-app/.agents/skills/` directory with project-local guidance for Drizzle, Node, TypeScript, Vite, React, Tailwind, accessibility, and frontend design. Consult those files when relevant, but treat tracked source as the final authority if guidance is stale.
+There is also an ignored `.agents/skills/` directory with project-local guidance for Drizzle, Node, TypeScript, Vite, React, Tailwind, accessibility, and frontend design. Consult those files when relevant, but treat tracked source as the final authority if guidance is stale.
 
 ## Stack
 
@@ -61,7 +58,7 @@ Use `corepack pnpm ...` in commands. Bare `pnpm` may not be available on PATH.
 
 ## Commands
 
-From `finance-app/`:
+From the repository root:
 
 ```bash
 corepack pnpm install
@@ -202,7 +199,6 @@ Only run the full DB loop when relevant; it starts or uses local Docker/Postgres
 
 ## Common Pitfalls
 
-- The app root is `finance-app/`, not the repository root.
 - `AGENTS.MD` may be staged or dirty; do not change staging unless the user asks.
 - README or guide content can lag behind code. Verify source before updating docs.
 - Private data in `packages/importer/src/data/` is ignored; do not expose or tidy it casually.
