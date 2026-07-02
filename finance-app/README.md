@@ -1,158 +1,207 @@
-# Personal Finance Analytics App
+# FinHunter
 
-First iteration of a local-first finance analytics foundation. It imports normalized transaction data into PostgreSQL and runs basic analytics from Node scripts.
+FinHunter is a local-first personal finance app for importing transaction exports, reviewing spending, and tracking upcoming payments. It runs a React/Vite web app against a Fastify API and stores normalized data in local PostgreSQL.
 
-This intentionally does not include a frontend, API, auth, cloud sync, reminders, or AI assistant yet.
+The app is built for personal use, so the default setup assumes a local database and private transaction files rather than hosted auth or cloud sync.
+
+## What It Does
+
+- Dashboard with recent activity, last-month spending, account summaries, and upcoming payments
+- Cockpit views for focused subjects such as home, flat, parking, salaries, and car expenses
+- Analytics for cashflow, income vs. expenses, category spend, and projections
+- Transaction search and filtering by type, account, category, subcategory, and date range
+- Payment reminders with manual reminders, detected candidates, due/overdue states, paid/skipped overrides, and account filters
+- Import assistant for previewing PDF or spreadsheet bank files, suggesting categories from history, reviewing rows, and exporting review CSVs
+- Script-based imports and analytics for the local database
 
 ## Stack
 
-- pnpm workspace
-- TypeScript
+- pnpm workspace managed through Corepack
+- TypeScript and ESM
+- React, Vite, React Router, TanStack Query, Tailwind CSS, Recharts, and PWA support
+- Fastify API with CORS, Helmet, and JSON error handling
 - PostgreSQL via Docker Compose
-- Drizzle ORM schema definitions
-- SQL migrations applied by a small Node migration runner
-- Node scripts for import and analytics
+- Drizzle ORM schema definitions plus SQL migrations
+- Node/tsx scripts for imports and analytics
 
-## Structure
+## Workspace
 
 ```text
+apps/
+  api/        Fastify API, static web serving, route tests
+  web/        React/Vite frontend and PWA assets
+
 packages/
+  analytics/  Local reporting scripts
   db/         PostgreSQL client, Drizzle schema, migrations
-  importer/  Sample CSV importer and normalization pipeline
-  analytics/ Local reporting scripts
-  shared/    Shared constants and types
+  importer/   CSV-like import pipeline for normalized transactions
+  shared/     Shared constants and TypeScript types
 ```
+
+The repository wrapper is one level up. Run project commands from `finance-app/`.
 
 ## Setup
 
 ```bash
+corepack pnpm install
 cp .env.example .env
-pnpm install
-pnpm db:up
-pnpm db:migrate
+corepack pnpm db:up
+corepack pnpm db:migrate
 ```
 
-The default database URL is:
+Default database URL:
 
 ```text
 postgres://finance:finance@localhost:5432/finance_app
 ```
 
-## Import Sample Data
+The app reads `.env` from the current package or nearby workspace directories. `DATABASE_URL` is the only required variable for the default local setup.
+
+## Development
+
+Run the API and web app in separate terminals:
 
 ```bash
-pnpm import:sample
-pnpm import:sample -- packages/importer/src/data/transactions.csv --account shared
-```
-
-The sample importer reads:
-
-```text
-packages/importer/src/sample-data/sample-transactions.csv
-```
-
-It currently demonstrates the future Excel import pipeline with a simple CSV source:
-
-- normalize dates to `YYYY-MM-DD`
-- normalize amounts to positive decimal strings
-- infer or read transaction type
-- map category and subcategory names
-- detect duplicates by same date, amount, account, category, subcategory, and description
-- tag expense rows with an account (`mine`, `shared`, `kids`, or `splitwise`; defaults to `mine`)
-- insert into PostgreSQL
-- print an import summary
-
-When you replace CSV with real Excel files, customize `packages/importer/src/parse-excel.ts` to map bank-specific columns into `RawTransactionRow`. The rest of the pipeline can stay mostly the same.
-
-## Hidden Import Assistant
-
-The app includes a low-visibility utility route at:
-
-```text
-/tools/import-assistant
-```
-
-Upload a bank PDF or Excel spreadsheet there to preview extracted rows, fuzzy category suggestions from historical transactions, and a downloadable review CSV. It does not import, persist, or save the uploaded source file.
-
-## Local Wi-Fi Access
-
-Use this when you want to open the web app from a phone or iPad on the same home Wi-Fi network.
-
-For the built app and API on one local URL, run:
-
-```bash
-pnpm app:lan
-```
-
-The startup log prints the friendly Bonjour URL first. It will look like:
-
-```text
-http://HOSTNAME.local:4000
-```
-
-This script builds the web app, serves the compiled files from the API, and binds that single API process to your local network. The default `pnpm api:dev` script still listens on `127.0.0.1` for normal local development. If macOS asks about incoming connections, allow Node for your private home network.
-
-For hot-reload development from another device, you can still run the API and Vite separately:
-
-```bash
-pnpm api:dev
-pnpm web:dev:lan
+corepack pnpm api:dev
+corepack pnpm web:dev
 ```
 
 Then open:
 
 ```text
-http://YOUR_IP:5173
+http://localhost:5173
 ```
 
-## Analytics
+The Vite dev server proxies `/api` and `/health` to `http://127.0.0.1:4000` by default. Set `VITE_API_PROXY_TARGET` if the API is running somewhere else.
+
+Useful commands:
 
 ```bash
-pnpm analyze:monthly
-pnpm analyze:yearly
-pnpm analyze:categories
-pnpm analyze:descriptions
+corepack pnpm typecheck
+corepack pnpm api:test
+corepack pnpm web:build
+corepack pnpm db:down
 ```
 
-## Database Tables
+## Local Wi-Fi Access
+
+To build the web app and serve it from the API on your local network:
+
+```bash
+corepack pnpm app:lan
+```
+
+This binds the API to `0.0.0.0`, serves `apps/web/dist`, and logs Bonjour/IP URLs such as:
+
+```text
+http://HOSTNAME.local:4000
+```
+
+For hot-reload development from another device, run:
+
+```bash
+corepack pnpm api:dev
+corepack pnpm web:dev:lan
+```
+
+Then open the Vite LAN URL on the other device.
+
+## Importing Data
+
+The script importer currently reads CSV-like files, despite the historical `import-excel.ts` name. The parser accepts comma or semicolon delimiters, finds the real header row, and maps rows into a shared transaction shape.
+
+```bash
+corepack pnpm import:sample
+corepack pnpm import:sample -- packages/importer/src/data/transactions-main.csv --account shared
+```
+
+Expected columns include:
+
+```text
+date, amount, description, category, subcategory, type, bankConcept
+```
+
+The importer normalizes dates and amounts, keeps expense/income amounts positive, creates categories and subcategories as needed, records source imports, and skips duplicates. Accounts are `mine`, `shared`, `kids`, and `splitwise`; the default is `mine`.
+
+Private finance files belong under `packages/importer/src/data/`, which is intentionally ignored by Git.
+
+## Import Assistant
+
+The web app includes a low-visibility utility route:
+
+```text
+/tools/import-assistant
+```
+
+Upload a bank PDF or spreadsheet there to preview extracted rows, compare them with historical transactions, edit suggestions, mark rows as reviewed/skipped, and export a CSV for review. The assistant previews and exports; it does not directly persist the uploaded source file or import rows into the database.
+
+## App Routes
+
+- `/` - dashboard
+- `/cockpit` and `/cockpit/:subjectSlug` - subject-focused summaries and detail views
+- `/analytics` - category and cashflow analytics
+- `/projection` - 12-month projection from recent history and configured income sources
+- `/upcoming` - payment reminders and detected recurring-payment candidates
+- `/transactions` - searchable transaction list
+- `/tools/import-assistant` - upload and review helper
+
+## API Surface
+
+The API listens on port `4000` by default and exposes:
+
+- `GET /health`
+- `GET /api/categories`
+- `GET /api/transactions`
+- `GET /api/reports/monthly-cashflow`
+- `GET /api/reports/income-vs-expenses`
+- `GET /api/reports/category-spend`
+- `GET /api/reports/projection`
+- `GET /api/cockpit/subjects`
+- `GET /api/cockpit/subjects/:slug`
+- `POST /api/imports/pdf-preview`
+- `POST /api/imports/spreadsheet-preview`
+- `GET /api/payment-reminders`
+- `GET /api/payment-reminders/upcoming`
+- `GET /api/payment-reminders/candidates`
+- `POST /api/payment-reminders`
+- `PATCH /api/payment-reminders/:id`
+- `DELETE /api/payment-reminders/:id`
+- `POST /api/payment-reminders/candidates/dismiss`
+- `POST /api/payment-reminders/:id/occurrences/:dueDate/mark-paid`
+- `POST /api/payment-reminders/:id/occurrences/:dueDate/skip`
+
+Most report and transaction endpoints accept account/date filters. Shared-style accounts (`shared`, `kids`, and `splitwise`) count as a half-share in personal reporting totals.
+
+## Analytics Scripts
+
+```bash
+corepack pnpm analyze:monthly
+corepack pnpm analyze:yearly
+corepack pnpm analyze:categories
+corepack pnpm analyze:descriptions
+corepack pnpm analyze:merchants
+```
+
+These read from PostgreSQL and print tables in the terminal.
+
+## Database
+
+Core tables:
 
 - `expenses`
 - `income`
 - `categories`
 - `subcategories`
 - `imports`
+- `payment_reminders`
+- `payment_reminder_occurrences`
+- `payment_reminder_dismissed_suggestions`
 - `schema_migrations`
 
-Expenses support:
+Transaction tables store dates, positive decimal amounts, descriptions, bank concepts, account, category/subcategory references, import source, and timestamps. Categories are mandatory; subcategories are optional and protected by category-aware foreign keys.
 
-- `id`
-- `date`
-- `amount`
-- `description`
-- `account`
-- `category_id`
-- `subcategory_id`
-- `source_import_id`
-- `created_at`
-- `updated_at`
+Run migrations with:
 
-Income supports the same shape:
-
-- `id`
-- `date`
-- `amount`
-- `description`
-- `account`
-- `category_id`
-- `subcategory_id`
-- `source_import_id`
-- `created_at`
-- `updated_at`
-
-## Next Good Steps
-
-1. Add a real Excel parser for one bank export format.
-2. Add import preview and row-level validation reports.
-3. Improve duplicate detection with description similarity.
-4. Add account/source tables if multiple bank accounts are imported.
-5. Add tests around normalization and category mapping.
+```bash
+corepack pnpm db:migrate
+```
