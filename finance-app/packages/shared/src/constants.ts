@@ -19,6 +19,14 @@ export const PAYMENT_OCCURRENCE_STATES = [
   'skipped',
 ] as const;
 
+export const COCKPIT_SUBJECT_SLUGS = [
+  'home',
+  'flat',
+  'parking',
+  'salaries',
+  'car',
+] as const;
+
 export const EXPENSE_ACCOUNTS = [
   'mine',
   'shared',

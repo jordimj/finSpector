@@ -3,6 +3,7 @@ import helmet from '@fastify/helmet';
 import sensible from '@fastify/sensible';
 import Fastify, { type FastifyError, type FastifyInstance } from 'fastify';
 import { registerCategoryRoutes } from './routes/categories.js';
+import { registerCockpitRoutes } from './routes/cockpit.js';
 import { registerImportRoutes } from './routes/imports.js';
 import { registerPaymentReminderRoutes } from './routes/payment-reminders.js';
 import { registerReportRoutes } from './routes/reports.js';
@@ -38,6 +39,7 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
   }));
 
   app.register(registerCategoryRoutes, { prefix: '/api/categories' });
+  app.register(registerCockpitRoutes, { prefix: '/api/cockpit' });
   app.register(registerImportRoutes, { prefix: '/api/imports' });
   app.register(registerPaymentReminderRoutes, {
     prefix: '/api/payment-reminders',

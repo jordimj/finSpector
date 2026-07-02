@@ -22,6 +22,7 @@ type IncomeVsExpensesChartProps = {
   expenseLabel?: string;
   isError: boolean;
   isLoading: boolean;
+  showExpenses?: boolean;
 };
 
 export type IncomeVsExpensesChartPeriod = IncomeVsExpensesPeriod & {
@@ -37,19 +38,20 @@ export function IncomeVsExpensesChart({
   expenseLabel = 'Expenses',
   isError,
   isLoading,
+  showExpenses = true,
 }: IncomeVsExpensesChartProps) {
   const chartData = buildChartData(data, comparisonData);
   const hasCashflow = chartData.some(
     (period) =>
       period.incomeAmount > 0 ||
-      period.expensesAmount > 0 ||
+      (showExpenses && period.expensesAmount > 0) ||
       (period.comparisonIncomeAmount ?? 0) > 0 ||
-      (period.comparisonExpensesAmount ?? 0) > 0,
+      (showExpenses && (period.comparisonExpensesAmount ?? 0) > 0),
   );
   const hasComparison = chartData.some(
     (period) =>
       period.comparisonIncomeAmount !== undefined ||
-      period.comparisonExpensesAmount !== undefined,
+      (showExpenses && period.comparisonExpensesAmount !== undefined),
   );
   const [chartContainerRef, hasChartSize, chartSize] =
     useHasElementSize<HTMLDivElement>();
@@ -67,10 +69,12 @@ export function IncomeVsExpensesChart({
               className='w-full max-w-5 animate-pulse rounded-t-md bg-accent-green/20'
               style={{ height: `${30 + ((index * 19) % 50)}%` }}
             />
-            <div
-              className='w-full max-w-6 animate-pulse rounded-t-md bg-accent-lavender/20'
-              style={{ height: `${24 + ((index * 23) % 56)}%` }}
-            />
+            {showExpenses ? (
+              <div
+                className='w-full max-w-6 animate-pulse rounded-t-md bg-accent-lavender/20'
+                style={{ height: `${24 + ((index * 23) % 56)}%` }}
+              />
+            ) : null}
           </div>
         ))}
       </div>
@@ -81,7 +85,7 @@ export function IncomeVsExpensesChart({
     return (
       <IncomeVsExpensesChartState>
         <p className='text-sm font-medium text-ink'>
-          Unable to load income and expenses
+          Unable to load {showExpenses ? 'income and expenses' : 'income'}
         </p>
         <p className='mt-1 text-xs text-muted'>
           Check that the API is running and try again.
@@ -95,7 +99,9 @@ export function IncomeVsExpensesChart({
       <IncomeVsExpensesChartState>
         <p className='text-sm font-medium text-ink'>No cashflow recorded</p>
         <p className='mt-1 text-xs text-muted'>
-          Imported income and expenses will show up here.
+          {showExpenses
+            ? 'Imported income and expenses will show up here.'
+            : 'Imported income will show up here.'}
         </p>
       </IncomeVsExpensesChartState>
     );
@@ -144,7 +150,12 @@ export function IncomeVsExpensesChart({
             />
             <Tooltip
               cursor={{ fill: 'rgb(184 190 253 / 0.08)' }}
-              content={<IncomeVsExpensesTooltip expenseLabel={expenseLabel} />}
+              content={
+                <IncomeVsExpensesTooltip
+                  expenseLabel={expenseLabel}
+                  showExpenses={showExpenses}
+                />
+              }
             />
             {hasComparison ? (
               <Bar
@@ -163,7 +174,7 @@ export function IncomeVsExpensesChart({
               maxBarSize={hasComparison ? 18 : 24}
               radius={[4, 4, 0, 0]}
             />
-            {hasComparison ? (
+            {hasComparison && showExpenses ? (
               <Bar
                 dataKey='comparisonExpensesAmount'
                 name={`Previous ${expenseLabel.toLocaleLowerCase()}`}
@@ -173,13 +184,15 @@ export function IncomeVsExpensesChart({
                 radius={[4, 4, 0, 0]}
               />
             ) : null}
-            <Bar
-              dataKey='expensesAmount'
-              name={expenseLabel}
-              fill='#b8befd'
-              maxBarSize={hasComparison ? 18 : 24}
-              radius={[4, 4, 0, 0]}
-            />
+            {showExpenses ? (
+              <Bar
+                dataKey='expensesAmount'
+                name={expenseLabel}
+                fill='#b8befd'
+                maxBarSize={hasComparison ? 18 : 24}
+                radius={[4, 4, 0, 0]}
+              />
+            ) : null}
           </BarChart>
         </ResponsiveContainer>
       ) : null}

@@ -7,12 +7,14 @@ type IncomeVsExpensesTooltipProps = {
   payload?: Array<{
     payload?: IncomeVsExpensesChartPeriod;
   }>;
+  showExpenses?: boolean;
 };
 
 export function IncomeVsExpensesTooltip({
   active,
   expenseLabel = 'Expenses',
   payload,
+  showExpenses = true,
 }: IncomeVsExpensesTooltipProps) {
   const period = payload?.[0]?.payload;
 
@@ -20,11 +22,14 @@ export function IncomeVsExpensesTooltip({
     return null;
   }
 
-  const hasComparison =
+  const hasIncomeComparison =
     period.comparisonPeriodLabel !== undefined &&
-    period.comparisonIncomeAmount !== undefined &&
+    period.comparisonIncomeAmount !== undefined;
+  const hasFullComparison =
+    hasIncomeComparison &&
     period.comparisonExpensesAmount !== undefined &&
     period.comparisonNetAmount !== undefined;
+  const hasComparison = showExpenses ? hasFullComparison : hasIncomeComparison;
 
   return (
     <div className='rounded-md border border-line bg-panel-raised px-3 py-2 shadow-shell'>
@@ -36,18 +41,22 @@ export function IncomeVsExpensesTooltip({
             {formatCurrency(period.incomeAmount)}
           </span>
         </div>
-        <div className='flex items-center justify-between gap-6'>
-          <span className='text-accent-lavender'>{expenseLabel}</span>
-          <span className='font-semibold tabular-nums text-ink'>
-            {formatCurrency(period.expensesAmount)}
-          </span>
-        </div>
-        <div className='mt-1 flex items-center justify-between gap-6 border-t border-line pt-1'>
-          <span className='text-muted'>Net</span>
-          <span className='font-semibold tabular-nums text-ink'>
-            {formatCurrency(period.netAmount)}
-          </span>
-        </div>
+        {showExpenses ? (
+          <>
+            <div className='flex items-center justify-between gap-6'>
+              <span className='text-accent-lavender'>{expenseLabel}</span>
+              <span className='font-semibold tabular-nums text-ink'>
+                {formatCurrency(period.expensesAmount)}
+              </span>
+            </div>
+            <div className='mt-1 flex items-center justify-between gap-6 border-t border-line pt-1'>
+              <span className='text-muted'>Net</span>
+              <span className='font-semibold tabular-nums text-ink'>
+                {formatCurrency(period.netAmount)}
+              </span>
+            </div>
+          </>
+        ) : null}
       </div>
       {hasComparison ? (
         <div className='mt-2 border-t border-line pt-2 text-xs'>
@@ -60,16 +69,20 @@ export function IncomeVsExpensesTooltip({
               label='Income'
               previous={period.comparisonIncomeAmount ?? 0}
             />
-            <ComparisonRow
-              current={period.expensesAmount}
-              label={expenseLabel}
-              previous={period.comparisonExpensesAmount ?? 0}
-            />
-            <ComparisonRow
-              current={period.netAmount}
-              label='Net'
-              previous={period.comparisonNetAmount ?? 0}
-            />
+            {showExpenses ? (
+              <>
+                <ComparisonRow
+                  current={period.expensesAmount}
+                  label={expenseLabel}
+                  previous={period.comparisonExpensesAmount ?? 0}
+                />
+                <ComparisonRow
+                  current={period.netAmount}
+                  label='Net'
+                  previous={period.comparisonNetAmount ?? 0}
+                />
+              </>
+            ) : null}
           </div>
         </div>
       ) : null}

@@ -1,4 +1,5 @@
 import {
+  COCKPIT_SUBJECT_SLUGS,
   EXPENSE_ACCOUNTS,
   PAYMENT_CADENCES,
   PAYMENT_OCCURRENCE_STATES,
@@ -12,6 +13,7 @@ export type PaymentCadence = (typeof PAYMENT_CADENCES)[number];
 export type PaymentReminderSource = (typeof PAYMENT_REMINDER_SOURCES)[number];
 export type PaymentOccurrenceState =
   (typeof PAYMENT_OCCURRENCE_STATES)[number];
+export type CockpitSubjectSlug = (typeof COCKPIT_SUBJECT_SLUGS)[number];
 
 export type RawTransactionRow = {
   date: string;
@@ -112,4 +114,89 @@ export type ImportSummary = {
   insertedIncome: number;
   duplicateRows: number;
   skippedRows: number;
+};
+
+export type CockpitAmountTotals = {
+  income: string;
+  expenses: string;
+  net: string;
+};
+
+export type CockpitUpcomingSummary = {
+  count: number;
+  nextOccurrence: PaymentReminderOccurrence | null;
+  total: string;
+};
+
+export type CockpitSubjectSummary = {
+  description: string;
+  name: string;
+  slug: CockpitSubjectSlug;
+  totals: CockpitAmountTotals;
+  transactionCount: number;
+  upcoming: CockpitUpcomingSummary;
+};
+
+export type CockpitCashflowPeriod = CockpitAmountTotals & {
+  period: string;
+};
+
+export type CockpitBreakdownItem = {
+  category: string;
+  categoryId: number;
+  subcategory: string | null;
+  subcategoryId: number | null;
+  total: string;
+  transactionCount: number;
+  type: TransactionType;
+};
+
+export type CockpitInsightMetricTone =
+  | 'amber'
+  | 'cyan'
+  | 'green'
+  | 'lavender'
+  | 'rose';
+
+export type CockpitInsightMetric = {
+  detail: string;
+  label: string;
+  tone: CockpitInsightMetricTone;
+  value: string;
+};
+
+export type CockpitInsightGroup = {
+  description: string;
+  metrics: CockpitInsightMetric[];
+  title: string;
+};
+
+export type CockpitInsightTimelineItem = {
+  count: number;
+  detail: string;
+  endDate: string | null;
+  label: string;
+  startDate: string | null;
+  total: string;
+};
+
+export type CockpitSubjectInsights = {
+  groups: CockpitInsightGroup[];
+  timeline: CockpitInsightTimelineItem[];
+};
+
+export type CockpitSubjectDetail = CockpitSubjectSummary & {
+  breakdown: CockpitBreakdownItem[];
+  insights: CockpitSubjectInsights;
+  monthlyCashflow: CockpitCashflowPeriod[];
+  recentTransactions: Transaction[];
+  upcomingOccurrences: PaymentReminderOccurrence[];
+};
+
+export type CockpitSubjectListResponse = {
+  subjects: CockpitSubjectSummary[];
+};
+
+export type CockpitSubjectDetailResponse = {
+  subject: CockpitSubjectDetail;
 };

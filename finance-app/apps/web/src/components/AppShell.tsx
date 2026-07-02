@@ -3,6 +3,7 @@ import {
   CalendarClock,
   Check,
   ChevronDown,
+  Gauge,
   LayoutDashboard,
   LineChart,
   ReceiptText,
@@ -31,6 +32,11 @@ const navigation = [
     to: '/',
     label: 'Dashboard',
     icon: LayoutDashboard,
+  },
+  {
+    to: '/cockpit',
+    label: 'Cockpit',
+    icon: Gauge,
   },
   {
     to: '/analytics',

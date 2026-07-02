@@ -12,25 +12,30 @@ type IncomeVsExpensesCardProps = {
   comparisonData?: IncomeVsExpenses;
   comparisonLabel?: string;
   data?: IncomeVsExpenses;
+  displayMode?: 'cashflow' | 'income-only';
   expenseLabel?: string;
   isComparisonError?: boolean;
   isComparisonLoading?: boolean;
   isError: boolean;
   isLoading: boolean;
   scopedExpenseComparison?: boolean;
+  title?: string;
 };
 
 export function IncomeVsExpensesCard({
   comparisonData,
   comparisonLabel,
   data,
+  displayMode = 'cashflow',
   expenseLabel = 'Expenses',
   isComparisonError = false,
   isComparisonLoading = false,
   isError,
   isLoading,
   scopedExpenseComparison = false,
+  title: titleOverride,
 }: IncomeVsExpensesCardProps) {
+  const showExpenses = displayMode !== 'income-only';
   const incomeTotal = Number(data?.totals.income ?? 0);
   const expensesTotal = Number(data?.totals.expenses ?? 0);
   const netTotal = Number(data?.totals.net ?? incomeTotal - expensesTotal);
@@ -47,9 +52,13 @@ export function IncomeVsExpensesCard({
     !isComparisonLoading &&
     !isComparisonError;
   const NetIcon = hasSurplus ? TrendingUp : TrendingDown;
-  const title = scopedExpenseComparison
-    ? `Income vs ${expenseLabel.toLocaleLowerCase()}`
-    : 'Income vs expenses';
+  const title =
+    titleOverride ??
+    (displayMode === 'income-only'
+      ? 'Income'
+      : scopedExpenseComparison
+        ? `Income vs ${expenseLabel.toLocaleLowerCase()}`
+        : 'Income vs expenses');
 
   const summaryMetricLabel = scopedExpenseComparison
     ? 'Income share'
@@ -98,34 +107,36 @@ export function IncomeVsExpensesCard({
               </span>
             ) : null}
           </div>
-          <div className='flex items-center gap-2'>
-            <span
-              className='size-2 rounded-full bg-accent-lavender'
-              aria-hidden='true'
-            />
-            <span className='font-medium text-muted'>{expenseLabel}</span>
-            <span className='font-semibold tabular-nums text-ink'>
-              {isLoading ? '...' : formatCurrency(expensesTotal)}
-            </span>
-            {comparisonLabel !== undefined ? (
+          {showExpenses ? (
+            <div className='flex items-center gap-2'>
               <span
-                className={cnComparisonStatusClass({
-                  current: expensesTotal,
-                  isError: isComparisonError,
-                  isLoading: isComparisonLoading,
-                  positiveOnIncrease: false,
-                  previous: comparisonExpensesTotal,
-                })}
-              >
-                {formatComparisonStatus({
-                  current: expensesTotal,
-                  isError: isComparisonError,
-                  isLoading: isComparisonLoading,
-                  previous: comparisonExpensesTotal,
-                })}
+                className='size-2 rounded-full bg-accent-lavender'
+                aria-hidden='true'
+              />
+              <span className='font-medium text-muted'>{expenseLabel}</span>
+              <span className='font-semibold tabular-nums text-ink'>
+                {isLoading ? '...' : formatCurrency(expensesTotal)}
               </span>
-            ) : null}
-          </div>
+              {comparisonLabel !== undefined ? (
+                <span
+                  className={cnComparisonStatusClass({
+                    current: expensesTotal,
+                    isError: isComparisonError,
+                    isLoading: isComparisonLoading,
+                    positiveOnIncrease: false,
+                    previous: comparisonExpensesTotal,
+                  })}
+                >
+                  {formatComparisonStatus({
+                    current: expensesTotal,
+                    isError: isComparisonError,
+                    isLoading: isComparisonLoading,
+                    previous: comparisonExpensesTotal,
+                  })}
+                </span>
+              ) : null}
+            </div>
+          ) : null}
         </div>
       </div>
 
@@ -135,70 +146,73 @@ export function IncomeVsExpensesCard({
         expenseLabel={expenseLabel}
         isError={isError}
         isLoading={isLoading}
+        showExpenses={showExpenses}
       />
 
-      <div className='mt-4 flex flex-col gap-3 rounded-md bg-panel-raised/70 px-4 py-3 sm:flex-row sm:items-center sm:justify-between'>
-        <div className='flex min-w-0 items-center gap-3'>
-          <span className={cnNetIconClass(hasSurplus)} aria-hidden='true'>
-            <NetIcon className='size-4' />
-          </span>
-          <p className='min-w-0 text-sm font-semibold text-muted-strong'>
-            {isLoading ? (
-              scopedExpenseComparison ? (
-                'Calculating comparison'
+      {showExpenses ? (
+        <div className='mt-4 flex flex-col gap-3 rounded-md bg-panel-raised/70 px-4 py-3 sm:flex-row sm:items-center sm:justify-between'>
+          <div className='flex min-w-0 items-center gap-3'>
+            <span className={cnNetIconClass(hasSurplus)} aria-hidden='true'>
+              <NetIcon className='size-4' />
+            </span>
+            <p className='min-w-0 text-sm font-semibold text-muted-strong'>
+              {isLoading ? (
+                scopedExpenseComparison ? (
+                  'Calculating comparison'
+                ) : (
+                  'Calculating net cashflow'
+                )
+              ) : scopedExpenseComparison ? (
+                <>
+                  {hasSurplus ? 'Remaining after spend' : 'Over income by'}{' '}
+                  <span
+                    className={
+                      hasSurplus ? 'text-accent-green' : 'text-accent-rose'
+                    }
+                  >
+                    {formatCurrency(Math.abs(netTotal))}
+                  </span>
+                </>
               ) : (
-                'Calculating net cashflow'
-              )
-            ) : scopedExpenseComparison ? (
-              <>
-                {hasSurplus ? 'Remaining after spend' : 'Over income by'}{' '}
-                <span
-                  className={
-                    hasSurplus ? 'text-accent-green' : 'text-accent-rose'
-                  }
-                >
-                  {formatCurrency(Math.abs(netTotal))}
-                </span>
-              </>
-            ) : (
-              <>
-                {hasSurplus ? 'Surplus' : 'Deficit'} of{' '}
-                <span
-                  className={
-                    hasSurplus ? 'text-accent-green' : 'text-accent-rose'
-                  }
-                >
-                  {formatCurrency(Math.abs(netTotal))}
-                </span>
-              </>
-            )}
+                <>
+                  {hasSurplus ? 'Surplus' : 'Deficit'} of{' '}
+                  <span
+                    className={
+                      hasSurplus ? 'text-accent-green' : 'text-accent-rose'
+                    }
+                  >
+                    {formatCurrency(Math.abs(netTotal))}
+                  </span>
+                </>
+              )}
+            </p>
+          </div>
+
+          <p className='text-sm font-semibold tabular-nums text-muted-strong'>
+            {summaryMetricLabel}{' '}
+            <span className='text-ink'>
+              {isLoading || summaryMetricValue === undefined
+                ? '--'
+                : formatPercentage(summaryMetricValue)}
+            </span>
+            {hasComparison ? (
+              <span className={cnDeltaClass(netTotal, comparisonNetTotal)}>
+                {' '}
+                · {formatSignedCurrency(netTotal - comparisonNetTotal)} vs{' '}
+                {comparisonLabel}
+              </span>
+            ) : comparisonLabel !== undefined ? (
+              <span className='text-muted'>
+                {' '}
+                ·{' '}
+                {isComparisonLoading
+                  ? 'Loading comparison'
+                  : 'Comparison unavailable'}
+              </span>
+            ) : null}
           </p>
         </div>
-
-        <p className='text-sm font-semibold tabular-nums text-muted-strong'>
-          {summaryMetricLabel}{' '}
-          <span className='text-ink'>
-            {isLoading || summaryMetricValue === undefined
-              ? '--'
-              : formatPercentage(summaryMetricValue)}
-          </span>
-          {hasComparison ? (
-            <span className={cnDeltaClass(netTotal, comparisonNetTotal)}>
-              {' '}
-              · {formatSignedCurrency(netTotal - comparisonNetTotal)} vs{' '}
-              {comparisonLabel}
-            </span>
-          ) : comparisonLabel !== undefined ? (
-            <span className='text-muted'>
-              {' '}
-              ·{' '}
-              {isComparisonLoading
-                ? 'Loading comparison'
-                : 'Comparison unavailable'}
-            </span>
-          ) : null}
-        </p>
-      </div>
+      ) : null}
     </div>
   );
 }
