@@ -121,7 +121,7 @@ export function GoogleCalendarPanel() {
               onClick={handleDeleteEvents}
               variant='danger'
             >
-              Delete events
+              Delete all
             </PanelButton>
             <PanelButton
               disabled={isBusy}

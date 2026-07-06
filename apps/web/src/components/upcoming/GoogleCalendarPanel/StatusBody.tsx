@@ -22,7 +22,7 @@ export function StatusBody({
     return (
       <StatusCopy
         title='Not connected'
-        description='Connect Google Calendar to create a dedicated FinHunter Reminders calendar.'
+        description='Connect Google Calendar to start pushing payment reminders.'
       />
     );
   }
@@ -30,18 +30,16 @@ export function StatusBody({
   const lastSync =
     status.lastSyncedAt === null
       ? 'Never synced'
-      : `Last sync ${formatSyncDate(status.lastSyncedAt)}`;
-  const account =
-    status.accountEmail === null
-      ? 'Google account connected'
-      : status.accountEmail;
+      : `Last sync: ${formatSyncDate(status.lastSyncedAt)}`;
 
   if (status.state === 'syncFailed') {
     return (
       <StatusCopy
         title='Sync needs attention'
-        description={status.lastError ?? 'The last Google Calendar sync failed.'}
-        detail={`${account} · ${lastSync}`}
+        description={
+          status.lastError ?? 'The last Google Calendar sync failed.'
+        }
+        detail={lastSync}
       />
     );
   }
@@ -49,8 +47,7 @@ export function StatusBody({
   return (
     <StatusCopy
       title={isSyncing ? 'Syncing reminders' : status.calendarName}
-      description='FinHunter owns this calendar and may overwrite reminder events it created.'
-      detail={`${account} · ${lastSync}`}
+      detail={lastSync}
     />
   );
 }
