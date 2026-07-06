@@ -1,5 +1,6 @@
-import { Link, Loader2, RefreshCcw, Unlink } from 'lucide-react';
+import { Link, Loader2, RefreshCcw, Trash2, Unlink } from 'lucide-react';
 import { useConnectGoogleCalendar } from '../../../hooks/calendarSync/useConnectGoogleCalendar';
+import { useDeleteGoogleCalendarEvents } from '../../../hooks/calendarSync/useDeleteGoogleCalendarEvents';
 import { useDisconnectGoogleCalendar } from '../../../hooks/calendarSync/useDisconnectGoogleCalendar';
 import { useGoogleCalendarSyncStatus } from '../../../hooks/calendarSync/useGoogleCalendarSyncStatus';
 import { useSyncGoogleCalendar } from '../../../hooks/calendarSync/useSyncGoogleCalendar';
@@ -11,10 +12,19 @@ import { StatusIcon } from './StatusIcon';
 export function GoogleCalendarPanel() {
   const status = useGoogleCalendarSyncStatus();
   const connect = useConnectGoogleCalendar();
+  const deleteEvents = useDeleteGoogleCalendarEvents();
   const disconnect = useDisconnectGoogleCalendar();
   const sync = useSyncGoogleCalendar();
   const data = status.data;
-  const isBusy = connect.isPending || disconnect.isPending || sync.isPending;
+  const isBusy =
+    connect.isPending ||
+    deleteEvents.isPending ||
+    disconnect.isPending ||
+    sync.isPending;
+  const isConnected =
+    data?.state === 'connected' ||
+    data?.state === 'needsSync' ||
+    data?.state === 'syncFailed';
 
   function handleConnect() {
     connect.mutate(undefined, {
@@ -22,6 +32,19 @@ export function GoogleCalendarPanel() {
         window.location.assign(response.authorizationUrl);
       },
     });
+  }
+
+  function handleDeleteEvents() {
+    if (
+      typeof window !== 'undefined' &&
+      !window.confirm(
+        'Delete all events in FinHunter Reminders only? This leaves your reminders and Google Calendar connection intact.',
+      )
+    ) {
+      return;
+    }
+
+    deleteEvents.mutate();
   }
 
   return (
@@ -71,9 +94,7 @@ export function GoogleCalendarPanel() {
           </PanelButton>
         ) : null}
 
-        {data?.state === 'connected' ||
-        data?.state === 'needsSync' ||
-        data?.state === 'syncFailed' ? (
+        {isConnected ? (
           <>
             <PanelButton
               disabled={isBusy}
@@ -90,6 +111,20 @@ export function GoogleCalendarPanel() {
             </PanelButton>
             <PanelButton
               disabled={isBusy}
+              icon={
+                deleteEvents.isPending ? (
+                  <Loader2 className='size-4 animate-spin' aria-hidden='true' />
+                ) : (
+                  <Trash2 className='size-4' aria-hidden='true' />
+                )
+              }
+              onClick={handleDeleteEvents}
+              variant='danger'
+            >
+              Delete events
+            </PanelButton>
+            <PanelButton
+              disabled={isBusy}
               icon={<Unlink className='size-4' aria-hidden='true' />}
               onClick={() => disconnect.mutate()}
               variant='ghost'
@@ -100,7 +135,10 @@ export function GoogleCalendarPanel() {
         ) : null}
       </div>
 
-      {connect.isError || disconnect.isError || sync.isError ? (
+      {connect.isError ||
+      deleteEvents.isError ||
+      disconnect.isError ||
+      sync.isError ? (
         <p className='mt-3 text-xs font-semibold text-accent-rose'>
           Calendar action failed. Check the API log for details.
         </p>

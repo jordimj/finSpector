@@ -68,6 +68,15 @@ export type GoogleCalendarSummary = {
   summary: string;
 };
 
+export type GoogleCalendarListedEvent = {
+  id: string;
+};
+
+export type GoogleCalendarEventListPage = {
+  events: GoogleCalendarListedEvent[];
+  nextPageToken: string | null;
+};
+
 export type GoogleCalendarEvent = {
   description: string;
   endDate: string;
@@ -91,6 +100,9 @@ export type GoogleCalendarClient = {
   refreshAccessToken(refreshToken: string): Promise<GoogleTokenResponse>;
   revokeToken(token: string): Promise<void>;
   listCalendars(accessToken: string): Promise<GoogleCalendarSummary[]>;
+  listEvents(
+    input: GoogleCalendarEventListInput,
+  ): Promise<GoogleCalendarEventListPage>;
   createCalendar(
     accessToken: string,
     summary: string,
@@ -110,6 +122,12 @@ export type GoogleCalendarEventDeleteInput = {
   accessToken: string;
   calendarId: string;
   eventId: string;
+};
+
+export type GoogleCalendarEventListInput = {
+  accessToken: string;
+  calendarId: string;
+  pageToken?: string | null;
 };
 
 export type CalendarSyncInsertAction = {

@@ -9,11 +9,15 @@ import type {
 } from './types.js';
 
 const openOccurrenceStates = new Set(['overdue', 'dueSoon', 'upcoming']);
+const syncedCadences = new Set(['annually', 'oneTime', 'quarterly']);
 
 export function isCalendarSyncOccurrence(
   occurrence: PaymentReminderOccurrence,
 ): boolean {
-  return openOccurrenceStates.has(occurrence.state);
+  return (
+    openOccurrenceStates.has(occurrence.state) &&
+    syncedCadences.has(occurrence.cadence)
+  );
 }
 
 export function toGoogleCalendarEvent(
@@ -38,7 +42,7 @@ export function toGoogleCalendarEvent(
     payloadHash: '',
     remindersMinutes: occurrence.leadDays * 24 * 60,
     startDate: occurrence.dueDate,
-    summary: `Pay ${occurrence.reminderName} (${occurrence.amount})`,
+    summary: `${occurrence.reminderName} (${occurrence.amount}€)`,
   };
 
   const payloadHash = hashJson({
@@ -147,13 +151,11 @@ export function toGoogleEventId(value: string): string {
 function buildDescription(occurrence: PaymentReminderOccurrence): string {
   return [
     `FinHunter payment reminder`,
-    `Amount: ${occurrence.amount}`,
     `Account: ${occurrence.account}`,
     `Category: ${occurrence.category}`,
     occurrence.subcategory === null
       ? null
       : `Subcategory: ${occurrence.subcategory}`,
-    occurrence.matchText === null ? null : `Match text: ${occurrence.matchText}`,
   ]
     .filter((line): line is string => line !== null)
     .join('\n');

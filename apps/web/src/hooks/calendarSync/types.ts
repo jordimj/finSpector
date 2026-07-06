@@ -27,3 +27,9 @@ export type GoogleCalendarSyncResult = {
 export type GoogleCalendarSyncResponse = {
   result: GoogleCalendarSyncResult;
 };
+
+export type GoogleCalendarDeleteEventsResponse = {
+  result: {
+    deleted: number;
+  };
+};

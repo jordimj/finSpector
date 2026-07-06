@@ -10,10 +10,10 @@ import type { CalendarEventSyncRow } from './types.js';
 
 describe('Google Calendar event mapping', () => {
   it('maps an open occurrence to a private all-day Google event', () => {
-    const event = toGoogleCalendarEvent(occurrence());
+    const event = toGoogleCalendarEvent(occurrence({ cadence: 'quarterly' }));
 
     assert.equal(event.id, toGoogleEventId('reminder-1:2026-07-15'));
-    assert.equal(event.summary, 'Pay Internet (42.00)');
+    assert.equal(event.summary, 'Internet (42.00€)');
     assert.equal(event.startDate, '2026-07-15');
     assert.equal(event.endDate, '2026-07-16');
     assert.equal(event.remindersMinutes, 7 * 24 * 60);
@@ -26,11 +26,13 @@ describe('Google Calendar event mapping', () => {
 
   it('plans inserts, updates, deletions, and skips', () => {
     const unchangedOccurrence = occurrence({
+      cadence: 'quarterly',
       dueDate: '2026-07-15',
       reminderId: 'unchanged',
     });
     const changedOccurrence = occurrence({
       amount: '45.00',
+      cadence: 'annually',
       dueDate: '2026-07-16',
       reminderId: 'changed',
     });
@@ -62,10 +64,12 @@ describe('Google Calendar event mapping', () => {
         unchangedOccurrence,
         changedOccurrence,
         occurrence({
+          cadence: 'oneTime',
           dueDate: '2026-07-18',
           reminderId: 'new',
         }),
         occurrence({
+          cadence: 'quarterly',
           dueDate: '2026-07-19',
           reminderId: 'paid',
           state: 'paid',
@@ -81,6 +85,44 @@ describe('Google Calendar event mapping', () => {
     assert.equal(plan.update[0]?.occurrence.reminderId, 'changed');
     assert.equal(plan.delete[0]?.syncRow.google_event_id, 'stale-event');
     assert.equal(plan.skip[0]?.syncRow.google_event_id, unchangedEvent.id);
+  });
+
+  it('excludes monthly occurrences and deletes existing monthly sync rows', () => {
+    const monthlyOccurrence = occurrence({
+      cadence: 'monthly',
+      dueDate: '2026-07-15',
+      reminderId: 'monthly',
+    });
+    const quarterlyOccurrence = occurrence({
+      cadence: 'quarterly',
+      dueDate: '2026-07-16',
+      reminderId: 'quarterly',
+    });
+    const quarterlyEvent = toGoogleCalendarEvent(quarterlyOccurrence);
+    const plan = planGoogleCalendarSync({
+      existingSyncs: [
+        syncRow({
+          due_date: monthlyOccurrence.dueDate,
+          google_event_id: 'monthly-event',
+          occurrence_key: 'monthly:2026-07-15',
+          payment_reminder_id: 'monthly',
+        }),
+        syncRow({
+          due_date: quarterlyOccurrence.dueDate,
+          google_event_id: quarterlyEvent.id,
+          occurrence_key: 'quarterly:2026-07-16',
+          payload_hash: quarterlyEvent.payloadHash,
+          payment_reminder_id: 'quarterly',
+        }),
+      ],
+      occurrences: [monthlyOccurrence, quarterlyOccurrence],
+    });
+
+    assert.equal(plan.insert.length, 0);
+    assert.equal(plan.update.length, 0);
+    assert.equal(plan.skip.length, 1);
+    assert.equal(plan.delete.length, 1);
+    assert.equal(plan.delete[0]?.syncRow.google_event_id, 'monthly-event');
   });
 });
 

@@ -13,6 +13,7 @@ import {
   disconnectGoogleIntegration,
   getActiveCalendarEventSyncs,
   getGoogleIntegration,
+  markActiveCalendarEventSyncsDeleted,
   markCalendarEventSyncDeleted,
   markGoogleIntegrationError,
   markGoogleIntegrationSynced,
@@ -34,12 +35,27 @@ import {
 
 const googleRefreshTokenRef = 'google:calendar:refresh_token';
 const genericSyncFailureMessage = 'Google Calendar sync failed';
+const genericCleanupFailureMessage = 'Google Calendar cleanup failed';
 
 export type CalendarSyncResult = {
   deleted: number;
   inserted: number;
   skipped: number;
   updated: number;
+};
+
+export type CalendarDeleteEventsResult = {
+  deleted: number;
+};
+
+export type CalendarSyncRepository = {
+  getGoogleIntegration(): Promise<CalendarIntegrationRow | null>;
+  markActiveCalendarEventSyncsDeleted(integrationId: string): Promise<number>;
+};
+
+export const defaultCalendarSyncRepository: CalendarSyncRepository = {
+  getGoogleIntegration,
+  markActiveCalendarEventSyncsDeleted,
 };
 
 export async function buildGoogleCalendarStatus({
@@ -182,6 +198,79 @@ export async function disconnectGoogleCalendar({
   await disconnectGoogleIntegration();
 }
 
+export async function deleteGoogleCalendarEvents({
+  client,
+  repository = defaultCalendarSyncRepository,
+  secretStore,
+}: {
+  client: GoogleCalendarClient;
+  repository?: CalendarSyncRepository;
+  secretStore: SecretStore;
+}): Promise<CalendarDeleteEventsResult> {
+  const activeIntegration = await repository.getGoogleIntegration();
+
+  if (
+    activeIntegration === null ||
+    activeIntegration.status === 'disconnected' ||
+    activeIntegration.calendar_id === null ||
+    activeIntegration.token_ref === null
+  ) {
+    throw Object.assign(new Error('Google Calendar is not connected'), {
+      statusCode: 400,
+    });
+  }
+
+  try {
+    const refreshToken = await secretStore.get(activeIntegration.token_ref);
+
+    if (refreshToken === null) {
+      throw new Error('Google Calendar token is missing from Keychain');
+    }
+
+    const token = await client.refreshAccessToken(refreshToken);
+    let pageToken: string | null = null;
+    const eventIds: string[] = [];
+    let deleted = 0;
+
+    do {
+      const page = await client.listEvents({
+        accessToken: token.accessToken,
+        calendarId: activeIntegration.calendar_id,
+        pageToken,
+      });
+
+      eventIds.push(...page.events.map((event) => event.id));
+
+      pageToken = page.nextPageToken;
+    } while (pageToken !== null);
+
+    for (const eventId of eventIds) {
+      const didDelete = await deleteManagedEvent({
+        accessToken: token.accessToken,
+        calendarId: activeIntegration.calendar_id,
+        client,
+        eventId,
+      });
+
+      if (didDelete) {
+        deleted += 1;
+      }
+    }
+
+    await repository.markActiveCalendarEventSyncsDeleted(activeIntegration.id);
+
+    return { deleted };
+  } catch (error) {
+    await markGoogleIntegrationError(
+      activeIntegration.id,
+      publicGoogleFailureMessage(error, genericCleanupFailureMessage),
+    );
+    throw Object.assign(new Error(genericCleanupFailureMessage), {
+      statusCode: 502,
+    });
+  }
+}
+
 export async function syncGoogleCalendar({
   client,
   integration,
@@ -262,7 +351,7 @@ export async function syncGoogleCalendar({
   } catch (error) {
     await markGoogleIntegrationError(
       activeIntegration.id,
-      publicSyncErrorMessage(error),
+      publicGoogleFailureMessage(error, genericSyncFailureMessage),
     );
     throw Object.assign(new Error(genericSyncFailureMessage), {
       statusCode: 502,
@@ -290,12 +379,13 @@ async function deleteManagedEvent({
   calendarId: string;
   client: GoogleCalendarClient;
   eventId: string;
-}): Promise<void> {
+}): Promise<boolean> {
   try {
     await client.deleteEvent({ accessToken, calendarId, eventId });
+    return true;
   } catch (error) {
     if (isGoogleStatus(error, 404)) {
-      return;
+      return false;
     }
 
     throw error;
@@ -397,12 +487,12 @@ function isGoogleStatus(error: unknown, status: number): boolean {
   return error instanceof GoogleCalendarApiError && error.status === status;
 }
 
-function publicSyncErrorMessage(error: unknown): string {
+function publicGoogleFailureMessage(error: unknown, fallback: string): string {
   if (error instanceof GoogleCalendarApiError) {
-    return `${genericSyncFailureMessage} (${error.status})`;
+    return `${fallback} (${error.status})`;
   }
 
-  return genericSyncFailureMessage;
+  return fallback;
 }
 
 async function updateOrInsertEvent({

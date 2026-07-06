@@ -3,7 +3,8 @@ import {
   type GoogleCalendarClient,
   type GoogleCalendarConfig,
   type GoogleCalendarEvent,
-  type GoogleCalendarEventDeleteInput,
+  type GoogleCalendarEventListInput,
+  type GoogleCalendarEventListPage,
   type GoogleCalendarEventWriteInput,
   type GoogleCalendarSummary,
   type GoogleTokenResponse,
@@ -101,6 +102,14 @@ export function createGoogleCalendarClient(
       return response.items;
     },
 
+    async listEvents(input) {
+      return requestJson<GoogleCalendarEventListPage>(eventListUrl(input), {
+        accessToken: input.accessToken,
+        method: 'GET',
+        parse: parseEventList,
+      });
+    },
+
     async refreshAccessToken(refreshToken) {
       return requestToken(
         new URLSearchParams({
@@ -122,7 +131,10 @@ export function createGoogleCalendarClient(
       });
 
       if (!response.ok && response.status !== 400) {
-        throw new GoogleCalendarApiError('Unable to revoke Google token', response.status);
+        throw new GoogleCalendarApiError(
+          'Unable to revoke Google token',
+          response.status,
+        );
       }
     },
 
@@ -130,6 +142,22 @@ export function createGoogleCalendarClient(
       await writeEvent('PUT', input);
     },
   };
+}
+
+function eventListUrl(input: GoogleCalendarEventListInput): string {
+  const params = new URLSearchParams({
+    maxResults: '2500',
+    showDeleted: 'false',
+    singleEvents: 'true',
+  });
+
+  if (input.pageToken !== undefined && input.pageToken !== null) {
+    params.set('pageToken', input.pageToken);
+  }
+
+  return `${calendarApiBaseUrl}/calendars/${encodeURIComponent(
+    input.calendarId,
+  )}/events?${params.toString()}`;
 }
 
 function eventBody(event: GoogleCalendarEvent): Record<string, unknown> {
@@ -178,7 +206,10 @@ async function requestEmpty(
   });
 
   if (!response.ok) {
-    throw new GoogleCalendarApiError('Google Calendar request failed', response.status);
+    throw new GoogleCalendarApiError(
+      'Google Calendar request failed',
+      response.status,
+    );
   }
 }
 
@@ -210,13 +241,18 @@ async function requestJson<T>(
   });
 
   if (!response.ok) {
-    throw new GoogleCalendarApiError('Google Calendar request failed', response.status);
+    throw new GoogleCalendarApiError(
+      'Google Calendar request failed',
+      response.status,
+    );
   }
 
   return parse(await response.json());
 }
 
-async function requestToken(params: URLSearchParams): Promise<GoogleTokenResponse> {
+async function requestToken(
+  params: URLSearchParams,
+): Promise<GoogleTokenResponse> {
   const response = await fetch(tokenUrl, {
     body: params,
     headers: {
@@ -226,7 +262,10 @@ async function requestToken(params: URLSearchParams): Promise<GoogleTokenRespons
   });
 
   if (!response.ok) {
-    throw new GoogleCalendarApiError('Google OAuth request failed', response.status);
+    throw new GoogleCalendarApiError(
+      'Google OAuth request failed',
+      response.status,
+    );
   }
 
   return parseTokenResponse(await response.json());
@@ -277,6 +316,33 @@ function parseCalendarSummary(value: unknown): GoogleCalendarSummary {
   }
 
   return { id, summary };
+}
+
+function parseEventList(value: unknown): GoogleCalendarEventListPage {
+  if (!isRecord(value)) {
+    return {
+      events: [],
+      nextPageToken: null,
+    };
+  }
+
+  const items = Array.isArray(value.items) ? value.items : [];
+  const nextPageToken = readString(value.nextPageToken);
+
+  return {
+    events: items.map(parseListedEvent).filter((value) => value !== null),
+    nextPageToken,
+  };
+}
+
+function parseListedEvent(value: unknown): { id: string } | null {
+  if (!isRecord(value)) {
+    return null;
+  }
+
+  const id = readString(value.id);
+
+  return id === null ? null : { id };
 }
 
 function parseTokenResponse(value: unknown): GoogleTokenResponse {

@@ -97,6 +97,22 @@ export async function markCalendarEventSyncDeleted(id: string): Promise<void> {
   );
 }
 
+export async function markActiveCalendarEventSyncsDeleted(
+  integrationId: string,
+): Promise<number> {
+  const result = await pool.query(
+    `
+      update calendar_event_syncs
+      set deleted_at = now(), updated_at = now()
+      where integration_id = $1
+        and deleted_at is null;
+    `,
+    [integrationId],
+  );
+
+  return result.rowCount ?? 0;
+}
+
 export async function markGoogleIntegrationError(
   id: string,
   message: string,

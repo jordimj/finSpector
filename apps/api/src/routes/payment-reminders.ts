@@ -1,5 +1,6 @@
 import { DEFAULT_PAYMENT_REMINDER_HORIZON_DAYS } from '@finance/shared';
 import type { FastifyInstance } from 'fastify';
+import { syncGoogleCalendarAfterReminderChange } from '../calendar-sync/autoSync.js';
 import {
   detectPaymentReminderCandidates,
   toReminderCandidateKey,
@@ -41,6 +42,35 @@ import {
   paymentReminderQuerySchema,
 } from '../payment-reminders/validation.js';
 
+type PaymentReminderRouteRepository = {
+  createPaymentReminder: typeof createPaymentReminder;
+  deactivatePaymentReminder: typeof deactivatePaymentReminder;
+  dismissPaymentReminderSuggestion: typeof dismissPaymentReminderSuggestion;
+  getCandidateExpenseRows: typeof getCandidateExpenseRows;
+  getDismissedSuggestionKeys: typeof getDismissedSuggestionKeys;
+  getPaymentReminderById: typeof getPaymentReminderById;
+  getPaymentReminderRows: typeof getPaymentReminderRows;
+  updatePaymentReminder: typeof updatePaymentReminder;
+  upsertOccurrenceStatus: typeof upsertOccurrenceStatus;
+};
+
+export type PaymentReminderRouteDependencies = {
+  afterReminderChange?: () => Promise<void>;
+  repository?: Partial<PaymentReminderRouteRepository>;
+};
+
+const defaultRepository: PaymentReminderRouteRepository = {
+  createPaymentReminder,
+  deactivatePaymentReminder,
+  dismissPaymentReminderSuggestion,
+  getCandidateExpenseRows,
+  getDismissedSuggestionKeys,
+  getPaymentReminderById,
+  getPaymentReminderRows,
+  updatePaymentReminder,
+  upsertOccurrenceStatus,
+};
+
 export type {
   CandidateExpenseInput,
   PaymentReminderForOccurrence,
@@ -58,7 +88,19 @@ export {
 
 export async function registerPaymentReminderRoutes(
   app: FastifyInstance,
+  dependencies: PaymentReminderRouteDependencies = {},
 ): Promise<void> {
+  const repository = {
+    ...defaultRepository,
+    ...dependencies.repository,
+  };
+  const afterReminderChange =
+    dependencies.afterReminderChange ??
+    (() =>
+      syncGoogleCalendarAfterReminderChange({
+        logger: app.log,
+      }));
+
   app.get<{ Querystring: PaymentReminderQuery }>(
     '/',
     {
@@ -67,7 +109,9 @@ export async function registerPaymentReminderRoutes(
       },
     },
     async (request) => {
-      const reminders = await getPaymentReminderRows(request.query.account);
+      const reminders = await repository.getPaymentReminderRows(
+        request.query.account,
+      );
 
       return {
         reminders: reminders.map(toPaymentReminderResponse),
@@ -106,9 +150,9 @@ export async function registerPaymentReminderRoutes(
     },
     async (request) => {
       const [candidateRows, reminders, dismissedKeys] = await Promise.all([
-        getCandidateExpenseRows(request.query.account),
-        getPaymentReminderRows(request.query.account),
-        getDismissedSuggestionKeys(),
+        repository.getCandidateExpenseRows(request.query.account),
+        repository.getPaymentReminderRows(request.query.account),
+        repository.getDismissedSuggestionKeys(),
       ]);
       const existingKeys = new Set(
         reminders.flatMap((reminder) =>
@@ -145,7 +189,8 @@ export async function registerPaymentReminderRoutes(
     },
     async (request, reply) => {
       const reminder = normalizePaymentReminderBody(request.body);
-      const created = await createPaymentReminder(reminder);
+      const created = await repository.createPaymentReminder(reminder);
+      await runAfterReminderChange(afterReminderChange, app);
 
       return reply.status(201).send({
         reminder: toPaymentReminderResponse(created),
@@ -162,12 +207,16 @@ export async function registerPaymentReminderRoutes(
       },
     },
     async (request) => {
-      const existing = await getPaymentReminderById(request.params.id);
+      const existing = await repository.getPaymentReminderById(request.params.id);
       const patch = normalizePaymentReminderBody({
         ...toEditableBody(existing),
         ...request.body,
       });
-      const updated = await updatePaymentReminder(request.params.id, patch);
+      const updated = await repository.updatePaymentReminder(
+        request.params.id,
+        patch,
+      );
+      await runAfterReminderChange(afterReminderChange, app);
 
       return {
         reminder: toPaymentReminderResponse(updated),
@@ -183,8 +232,9 @@ export async function registerPaymentReminderRoutes(
       },
     },
     async (request) => {
-      await getPaymentReminderById(request.params.id);
-      await deactivatePaymentReminder(request.params.id);
+      await repository.getPaymentReminderById(request.params.id);
+      await repository.deactivatePaymentReminder(request.params.id);
+      await runAfterReminderChange(afterReminderChange, app);
 
       return {
         id: request.params.id,
@@ -210,7 +260,7 @@ export async function registerPaymentReminderRoutes(
     async (request) => {
       const key = request.body.key ?? '';
 
-      await dismissPaymentReminderSuggestion(key);
+      await repository.dismissPaymentReminderSuggestion(key);
 
       return {
         key,
@@ -226,14 +276,15 @@ export async function registerPaymentReminderRoutes(
       },
     },
     async (request) => {
-      await getPaymentReminderById(request.params.id);
+      await repository.getPaymentReminderById(request.params.id);
 
-      const occurrence = await upsertOccurrenceStatus({
+      const occurrence = await repository.upsertOccurrenceStatus({
         dueDate: request.params.dueDate,
         matchedExpenseId: null,
         paymentReminderId: request.params.id,
         status: 'paid',
       });
+      await runAfterReminderChange(afterReminderChange, app);
 
       return {
         occurrence: toOccurrenceOverrideResponse(occurrence),
@@ -249,18 +300,35 @@ export async function registerPaymentReminderRoutes(
       },
     },
     async (request) => {
-      await getPaymentReminderById(request.params.id);
+      await repository.getPaymentReminderById(request.params.id);
 
-      const occurrence = await upsertOccurrenceStatus({
+      const occurrence = await repository.upsertOccurrenceStatus({
         dueDate: request.params.dueDate,
         matchedExpenseId: null,
         paymentReminderId: request.params.id,
         status: 'skipped',
       });
+      await runAfterReminderChange(afterReminderChange, app);
 
       return {
         occurrence: toOccurrenceOverrideResponse(occurrence),
       };
     },
   );
+}
+
+export async function runAfterReminderChange(
+  afterReminderChange: () => Promise<void>,
+  app: FastifyInstance,
+): Promise<void> {
+  try {
+    await afterReminderChange();
+  } catch (error) {
+    app.log.warn(
+      {
+        err: error,
+      },
+      'Automatic Google Calendar sync failed after reminder change',
+    );
+  }
 }

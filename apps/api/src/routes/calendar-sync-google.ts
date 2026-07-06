@@ -5,8 +5,11 @@ import {
   buildGoogleCalendarStatus,
   completeGoogleCalendarConnection,
   createGoogleCalendarConnectUrl,
+  defaultCalendarSyncRepository,
+  deleteGoogleCalendarEvents,
   disconnectGoogleCalendar,
   syncGoogleCalendar,
+  type CalendarSyncRepository,
 } from '../calendar-sync/service.js';
 import {
   createDefaultSecretStore,
@@ -26,6 +29,7 @@ type CallbackQuery = {
 export type GoogleCalendarSyncRouteDependencies = {
   client?: GoogleCalendarClient;
   config?: GoogleCalendarConfig | null;
+  repository?: CalendarSyncRepository;
   secretStore?: SecretStore;
 };
 
@@ -118,6 +122,25 @@ export async function registerGoogleCalendarSyncRoutes(
     };
   });
 
+  app.delete('/events', async (_request, reply) => {
+    const { client, config, repository, secretStore } =
+      resolveRouteDependencies(dependencies);
+
+    if (config === null || client === null || !(await secretStore.isAvailable())) {
+      return reply.status(400).send({
+        error: 'Calendar sync not configured',
+      });
+    }
+
+    return {
+      result: await deleteGoogleCalendarEvents({
+        client,
+        repository,
+        secretStore,
+      }),
+    };
+  });
+
   app.post('/sync', async (_request, reply) => {
     const { client, config, secretStore } =
       resolveRouteDependencies(dependencies);
@@ -139,6 +162,7 @@ function resolveRouteDependencies(
 ): {
   client: GoogleCalendarClient | null;
   config: GoogleCalendarConfig | null;
+  repository: CalendarSyncRepository;
   secretStore: SecretStore;
 } {
   const config =
@@ -152,6 +176,7 @@ function resolveRouteDependencies(
   return {
     client,
     config,
+    repository: dependencies.repository ?? defaultCalendarSyncRepository,
     secretStore: dependencies.secretStore ?? createDefaultSecretStore(),
   };
 }
