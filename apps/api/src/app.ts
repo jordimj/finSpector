@@ -5,6 +5,7 @@ import Fastify, { type FastifyError, type FastifyInstance } from 'fastify';
 import { registerCategoryRoutes } from './routes/categories.js';
 import { registerCockpitRoutes } from './routes/cockpit.js';
 import { registerImportRoutes } from './routes/imports.js';
+import { registerGoogleCalendarSyncRoutes } from './routes/calendar-sync-google.js';
 import { registerPaymentReminderRoutes } from './routes/payment-reminders.js';
 import { registerReportRoutes } from './routes/reports.js';
 import { registerTransactionRoutes } from './routes/transactions.js';
@@ -41,6 +42,9 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
   app.register(registerCategoryRoutes, { prefix: '/api/categories' });
   app.register(registerCockpitRoutes, { prefix: '/api/cockpit' });
   app.register(registerImportRoutes, { prefix: '/api/imports' });
+  app.register(registerGoogleCalendarSyncRoutes, {
+    prefix: '/api/calendar-sync/google',
+  });
   app.register(registerPaymentReminderRoutes, {
     prefix: '/api/payment-reminders',
   });

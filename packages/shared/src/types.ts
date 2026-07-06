@@ -80,6 +80,7 @@ export type PaymentReminderOccurrence = {
   subcategory: string | null;
   matchText: string | null;
   dueDate: string;
+  leadDays: number;
   state: PaymentOccurrenceState;
   matchedExpenseId: string | null;
   paidAt: string | null;

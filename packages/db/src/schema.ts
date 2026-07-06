@@ -271,6 +271,89 @@ export const paymentReminderDismissedSuggestions = pgTable(
   },
 );
 
+export const calendarIntegrations = pgTable(
+  'calendar_integrations',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    provider: text('provider').notNull(),
+    providerAccountId: text('provider_account_id'),
+    accountEmail: text('account_email'),
+    calendarId: text('calendar_id'),
+    calendarName: text('calendar_name').notNull().default('FinHunter Reminders'),
+    tokenRef: text('token_ref'),
+    scopes: text('scopes').array().notNull().default([]),
+    status: text('status').notNull().default('disconnected'),
+    lastSyncedAt: timestamp('last_synced_at', { withTimezone: true }),
+    lastError: text('last_error'),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => ({
+    providerUnique: uniqueIndex('calendar_integrations_provider_unique').on(
+      table.provider,
+    ),
+    statusIdx: index('calendar_integrations_status_idx').on(table.status),
+  }),
+);
+
+export const calendarEventSyncs = pgTable(
+  'calendar_event_syncs',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    integrationId: uuid('integration_id')
+      .notNull()
+      .references(() => calendarIntegrations.id, { onDelete: 'cascade' }),
+    paymentReminderId: uuid('payment_reminder_id')
+      .notNull()
+      .references(() => paymentReminders.id, { onDelete: 'cascade' }),
+    dueDate: date('due_date').notNull(),
+    googleEventId: text('google_event_id').notNull(),
+    occurrenceKey: text('occurrence_key').notNull(),
+    payloadHash: text('payload_hash').notNull(),
+    lastSyncedAt: timestamp('last_synced_at', { withTimezone: true }),
+    deletedAt: timestamp('deleted_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => ({
+    deletedIdx: index('calendar_event_syncs_deleted_idx').on(table.deletedAt),
+    googleEventUnique: uniqueIndex(
+      'calendar_event_syncs_google_event_unique',
+    ).on(table.integrationId, table.googleEventId),
+    integrationIdx: index('calendar_event_syncs_integration_idx').on(
+      table.integrationId,
+    ),
+    occurrenceUnique: uniqueIndex(
+      'calendar_event_syncs_occurrence_unique',
+    ).on(table.integrationId, table.paymentReminderId, table.dueDate),
+  }),
+);
+
+export const calendarOauthStates = pgTable(
+  'calendar_oauth_states',
+  {
+    state: text('state').primaryKey(),
+    codeVerifier: text('code_verifier').notNull(),
+    redirectPath: text('redirect_path').notNull().default('/upcoming'),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+    consumedAt: timestamp('consumed_at', { withTimezone: true }),
+  },
+  (table) => ({
+    expiresIdx: index('calendar_oauth_states_expires_idx').on(table.expiresAt),
+  }),
+);
+
 export const categoryRelations = relations(categories, ({ many }) => ({
   subcategories: many(subcategories),
   paymentReminders: many(paymentReminders),
@@ -307,6 +390,27 @@ export const paymentReminderOccurrenceRelations = relations(
     }),
     paymentReminder: one(paymentReminders, {
       fields: [paymentReminderOccurrences.paymentReminderId],
+      references: [paymentReminders.id],
+    }),
+  }),
+);
+
+export const calendarIntegrationRelations = relations(
+  calendarIntegrations,
+  ({ many }) => ({
+    eventSyncs: many(calendarEventSyncs),
+  }),
+);
+
+export const calendarEventSyncRelations = relations(
+  calendarEventSyncs,
+  ({ one }) => ({
+    integration: one(calendarIntegrations, {
+      fields: [calendarEventSyncs.integrationId],
+      references: [calendarIntegrations.id],
+    }),
+    paymentReminder: one(paymentReminders, {
+      fields: [calendarEventSyncs.paymentReminderId],
       references: [paymentReminders.id],
     }),
   }),

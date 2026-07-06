@@ -43,6 +43,7 @@ export function generatePaymentReminderOccurrences(
     categoryId: reminder.categoryId,
     dueDate,
     id: null,
+    leadDays: reminder.leadDays,
     matchText: reminder.matchText,
     matchedExpenseId: null,
     paidAt: null,

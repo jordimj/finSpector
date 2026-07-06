@@ -152,6 +152,9 @@ Import assistant:
 - Prefer dense, scan-friendly layouts with clear headings, filters, tables, charts, summary tiles, loading states, empty states, and error notices.
 - Use lucide icons for navigation/actions when an icon exists.
 - Keep page-level layout under `AppShell`; add focused components/hooks for complex sections.
+- Keep React components one per file. If a feature needs local subcomponents, create a folder named for the main component, put the main component in `index.tsx`, and place each subcomponent in its own sibling file.
+- Keep React hooks one per file. Do not add barrel files for hooks; import each hook from its direct file.
+- Keep reusable utility functions out of component files. Add them to a focused file under `apps/web/src/utils/` such as `date.ts` instead of defining them beside JSX.
 - Keep controls ergonomic: date range presets, account filters, selects, inputs, toggles, and icon buttons should match existing patterns.
 - Avoid nested card-in-card layouts and decorative hero/landing-page treatment.
 - Ensure text fits on mobile and desktop. Use stable grid/width constraints for tables, charts, toolbar controls, and repeated rows.

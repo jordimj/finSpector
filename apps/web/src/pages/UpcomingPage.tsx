@@ -8,6 +8,7 @@ import { Plus } from 'lucide-react';
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { ActiveRemindersPanel } from '../components/upcoming/ActiveRemindersPanel';
 import { DetectedCandidatesPanel } from '../components/upcoming/DetectedCandidatesPanel';
+import { GoogleCalendarPanel } from '../components/upcoming/GoogleCalendarPanel';
 import { PageNotice } from '../components/upcoming/PanelStates';
 import { ReminderDialog } from '../components/upcoming/ReminderDialog';
 import {
@@ -205,6 +206,8 @@ export function UpcomingPage() {
             pending={deactivateReminder.isPending}
             reminders={reminders.data?.reminders ?? []}
           />
+
+          <GoogleCalendarPanel />
         </div>
       </div>
 

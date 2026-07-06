@@ -16,6 +16,7 @@
     "@finance/db": "workspace:*",
     "@finance/shared": "workspace:*",
     "fastify": "^5.2.1",
+    "googleapis": "^173.0.0",
     "pdf-parse": "^2.4.5",
     "xlsx": "^0.18.5"
   }

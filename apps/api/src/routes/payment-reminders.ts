@@ -1,28 +1,20 @@
-import {
-  DEFAULT_PAYMENT_REMINDER_HORIZON_DAYS,
-  type PaymentReminderOccurrence,
-} from '@finance/shared';
+import { DEFAULT_PAYMENT_REMINDER_HORIZON_DAYS } from '@finance/shared';
 import type { FastifyInstance } from 'fastify';
 import {
   detectPaymentReminderCandidates,
   toReminderCandidateKey,
 } from '../payment-reminders/candidates.js';
-import { overdueLookbackDays } from '../payment-reminders/constants.js';
-import { addDays, formatDateKey } from '../payment-reminders/date.js';
 import {
-  compareOccurrences,
   generatePaymentReminderOccurrences,
-  occurrenceKey,
   summarizeOccurrences,
 } from '../payment-reminders/occurrences.js';
+import { materializePaymentReminderOccurrences } from '../payment-reminders/materialize.js';
 import {
   createPaymentReminder,
   deactivatePaymentReminder,
   dismissPaymentReminderSuggestion,
-  findMatchingExpense,
   getCandidateExpenseRows,
   getDismissedSuggestionKeys,
-  getOccurrenceOverrides,
   getPaymentReminderById,
   getPaymentReminderRows,
   updatePaymentReminder,
@@ -32,8 +24,6 @@ import {
   toCandidateExpenseInput,
   toEditableBody,
   toOccurrenceOverrideResponse,
-  toOccurrenceReminder,
-  toOccurrenceResponse,
   toPaymentReminderResponse,
 } from '../payment-reminders/serializers.js';
 import type {
@@ -95,53 +85,14 @@ export async function registerPaymentReminderRoutes(
     async (request) => {
       const horizonDays =
         request.query.days ?? DEFAULT_PAYMENT_REMINDER_HORIZON_DAYS;
-      const today = formatDateKey(new Date());
-      const startDate = addDays(today, -overdueLookbackDays);
-      const endDate = addDays(today, horizonDays);
-      const reminders = await getPaymentReminderRows(request.query.account);
-      const generated = reminders.flatMap((reminder) =>
-        generatePaymentReminderOccurrences(
-          toOccurrenceReminder(reminder),
-          startDate,
-          endDate,
-          today,
-        ),
-      );
-      const overrides = await getOccurrenceOverrides(
-        reminders.map((reminder) => reminder.id),
-        startDate,
-        endDate,
-      );
-      const occurrences: PaymentReminderOccurrence[] = [];
-
-      for (const occurrence of generated) {
-        const override = overrides.get(occurrenceKey(occurrence));
-
-        if (override !== undefined) {
-          occurrences.push(toOccurrenceResponse(occurrence, override));
-          continue;
-        }
-
-        const matchedExpense = await findMatchingExpense(occurrence);
-
-        if (matchedExpense === undefined) {
-          occurrences.push(toOccurrenceResponse(occurrence));
-          continue;
-        }
-
-        const paidOverride = await upsertOccurrenceStatus({
-          dueDate: occurrence.dueDate,
-          matchedExpenseId: matchedExpense.id,
-          paymentReminderId: occurrence.reminderId,
-          status: 'paid',
-        });
-
-        occurrences.push(toOccurrenceResponse(occurrence, paidOverride));
-      }
+      const { occurrences } = await materializePaymentReminderOccurrences({
+        account: request.query.account,
+        days: horizonDays,
+      });
 
       return {
         summary: summarizeOccurrences(occurrences, horizonDays),
-        occurrences: occurrences.sort(compareOccurrences),
+        occurrences,
       };
     },
   );
