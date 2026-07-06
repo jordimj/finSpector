@@ -5,7 +5,12 @@ import {
   type PaymentReminderCandidate,
 } from '@finance/shared';
 import { Plus } from 'lucide-react';
-import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import {
+  useEffect,
+  useMemo,
+  useState,
+  type FormEvent,
+} from 'react';
 import { ActiveRemindersPanel } from '../components/upcoming/ActiveRemindersPanel';
 import { DetectedCandidatesPanel } from '../components/upcoming/DetectedCandidatesPanel';
 import { GoogleCalendarPanel } from '../components/upcoming/GoogleCalendarPanel';
@@ -170,45 +175,46 @@ export function UpcomingPage() {
         upcomingLoading={upcoming.isLoading}
       />
 
-      <div className='mt-8 grid gap-5 xl:grid-cols-[minmax(0,1.35fr)_minmax(24rem,0.65fr)]'>
-        <UpcomingOccurrencesPanel
-          isLoading={upcoming.isLoading}
-          markPaidPending={markPaid.isPending}
-          occurrences={openOccurrences}
-          onMarkPaid={(occurrence) =>
-            markPaid.mutate({
-              dueDate: occurrence.dueDate,
-              reminderId: occurrence.reminderId,
-            })
-          }
-          onSkip={(occurrence) =>
-            skipOccurrence.mutate({
-              dueDate: occurrence.dueDate,
-              reminderId: occurrence.reminderId,
-            })
-          }
-          skipPending={skipOccurrence.isPending}
+      <div className='mt-8 grid gap-5 xl:grid-cols-[minmax(0,1.35fr)_minmax(24rem,0.65fr)] xl:grid-rows-[auto_auto_auto]'>
+        <div className='xl:relative xl:row-span-3 xl:min-h-0'>
+          <UpcomingOccurrencesPanel
+            className='xl:absolute xl:inset-0'
+            isLoading={upcoming.isLoading}
+            markPaidPending={markPaid.isPending}
+            occurrences={openOccurrences}
+            onMarkPaid={(occurrence) =>
+              markPaid.mutate({
+                dueDate: occurrence.dueDate,
+                reminderId: occurrence.reminderId,
+              })
+            }
+            onSkip={(occurrence) =>
+              skipOccurrence.mutate({
+                dueDate: occurrence.dueDate,
+                reminderId: occurrence.reminderId,
+              })
+            }
+            skipPending={skipOccurrence.isPending}
+          />
+        </div>
+
+        <DetectedCandidatesPanel
+          candidates={candidates.data?.candidates ?? []}
+          isLoading={candidates.isLoading}
+          onConfirm={handleConfirmCandidate}
+          onDismiss={(candidate) => dismissCandidate.mutate(candidate.key)}
+          pending={createReminder.isPending || dismissCandidate.isPending}
         />
 
-        <div className='space-y-5'>
-          <DetectedCandidatesPanel
-            candidates={candidates.data?.candidates ?? []}
-            isLoading={candidates.isLoading}
-            onConfirm={handleConfirmCandidate}
-            onDismiss={(candidate) => dismissCandidate.mutate(candidate.key)}
-            pending={createReminder.isPending || dismissCandidate.isPending}
-          />
+        <ActiveRemindersPanel
+          isLoading={reminders.isLoading}
+          onDeactivate={(reminder) => deactivateReminder.mutate(reminder.id)}
+          onEdit={handleEditReminder}
+          pending={deactivateReminder.isPending}
+          reminders={reminders.data?.reminders ?? []}
+        />
 
-          <ActiveRemindersPanel
-            isLoading={reminders.isLoading}
-            onDeactivate={(reminder) => deactivateReminder.mutate(reminder.id)}
-            onEdit={handleEditReminder}
-            pending={deactivateReminder.isPending}
-            reminders={reminders.data?.reminders ?? []}
-          />
-
-          <GoogleCalendarPanel />
-        </div>
+        <GoogleCalendarPanel />
       </div>
 
       <ReminderDialog

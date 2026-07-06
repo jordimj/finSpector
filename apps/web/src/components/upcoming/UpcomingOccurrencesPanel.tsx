@@ -8,6 +8,7 @@ import {
 import { EmptyState, LoadingState } from './PanelStates';
 import {
   formatOccurrenceState,
+  formatCadenceLabel,
   stateStyles,
 } from './reminderUi';
 
@@ -18,7 +19,9 @@ export function UpcomingOccurrencesPanel({
   onMarkPaid,
   onSkip,
   skipPending,
+  className,
 }: {
+  className?: string;
   isLoading: boolean;
   markPaidPending: boolean;
   occurrences: PaymentReminderOccurrence[];
@@ -27,7 +30,12 @@ export function UpcomingOccurrencesPanel({
   skipPending: boolean;
 }) {
   return (
-    <section className='min-h-[34rem] rounded-lg border border-line bg-panel shadow-shell'>
+    <section
+      className={cn(
+        'flex flex-col overflow-hidden rounded-lg border border-line bg-panel shadow-shell',
+        className,
+      )}
+    >
       <div className='flex items-start justify-between gap-4 border-b border-line px-5 py-4'>
         <div>
           <h2 className='text-xl font-semibold tracking-normal text-ink'>
@@ -47,7 +55,7 @@ export function UpcomingOccurrencesPanel({
           title='No open payments'
         />
       ) : (
-        <div className='divide-y divide-line'>
+        <div className='min-h-0 flex-1 divide-y divide-line overflow-y-auto'>
           {occurrences.map((occurrence) => (
             <div
               key={`${occurrence.reminderId}-${occurrence.dueDate}`}
@@ -67,6 +75,9 @@ export function UpcomingOccurrencesPanel({
                     {formatTransactionDate(occurrence.dueDate, {
                       includeYear: true,
                     })}
+                  </span>
+                  <span className='inline-flex h-6 items-center rounded-full bg-panel-raised px-2.5 text-xs font-bold uppercase tracking-[0.12em] text-muted-strong'>
+                    {formatCadenceLabel(occurrence.cadence)}
                   </span>
                 </div>
                 <h3 className='truncate text-base font-semibold text-ink'>

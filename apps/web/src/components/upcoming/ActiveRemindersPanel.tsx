@@ -35,7 +35,7 @@ export function ActiveRemindersPanel({
           title='No reminders'
         />
       ) : (
-        <div className='mt-4 space-y-2'>
+        <div className='mt-4 max-h-[19rem] space-y-2 overflow-y-auto pr-1'>
           {reminders.map((reminder) => (
             <div
               key={reminder.id}

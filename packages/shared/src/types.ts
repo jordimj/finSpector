@@ -73,6 +73,7 @@ export type PaymentReminderOccurrence = {
   reminderName: string;
   amount: string;
   amountTolerance: string;
+  cadence: PaymentCadence;
   account: ExpenseAccount;
   categoryId: number;
   category: string;

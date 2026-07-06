@@ -91,6 +91,7 @@ function occurrence(
     account: 'mine',
     amount: '42.00',
     amountTolerance: '5.00',
+    cadence: 'monthly',
     category: 'Utilities',
     categoryId: 10,
     dueDate: '2026-07-15',

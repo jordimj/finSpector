@@ -39,6 +39,7 @@ export function generatePaymentReminderOccurrences(
     account: reminder.account,
     amount: reminder.amount,
     amountTolerance: reminder.amountTolerance,
+    cadence: reminder.cadence,
     category: reminder.category,
     categoryId: reminder.categoryId,
     dueDate,
