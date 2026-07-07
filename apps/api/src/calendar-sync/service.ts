@@ -48,6 +48,11 @@ export type CalendarDeleteEventsResult = {
   deleted: number;
 };
 
+type GoogleCalendarTarget = {
+  id: string;
+  summary: string;
+};
+
 export type CalendarSyncRepository = {
   getGoogleIntegration(): Promise<CalendarIntegrationRow | null>;
   markActiveCalendarEventSyncsDeleted(integrationId: string): Promise<number>;
@@ -158,7 +163,17 @@ export async function completeGoogleCalendarConnection({
 
   await secretStore.set(googleRefreshTokenRef, tokens.refreshToken);
 
-  const calendar = await findOrCreateCalendar(client, tokens.accessToken);
+  const existingIntegration = await getGoogleIntegration();
+  const calendar = await resolveGoogleCalendarForConnection({
+    accessToken: tokens.accessToken,
+    client,
+    preferredCalendar: existingIntegration?.calendar_id
+      ? {
+          id: existingIntegration.calendar_id,
+          summary: existingIntegration.calendar_name,
+        }
+      : null,
+  });
   const integration = await upsertGoogleIntegration({
     accountEmail: null,
     calendarId: calendar.id,
@@ -167,6 +182,14 @@ export async function completeGoogleCalendarConnection({
     scopes: scopesFromToken(tokens.scope),
     tokenRef: googleRefreshTokenRef,
   });
+
+  if (
+    existingIntegration?.calendar_id !== null &&
+    existingIntegration?.calendar_id !== undefined &&
+    existingIntegration.calendar_id !== calendar.id
+  ) {
+    await markActiveCalendarEventSyncsDeleted(integration.id);
+  }
 
   await syncGoogleCalendar({
     client,
@@ -228,33 +251,21 @@ export async function deleteGoogleCalendarEvents({
     }
 
     const token = await client.refreshAccessToken(refreshToken);
-    let pageToken: string | null = null;
-    const eventIds: string[] = [];
+    const calendarId = activeIntegration.calendar_id;
+    const targets = await googleCalendarDeletionTargets({
+      accessToken: token.accessToken,
+      activeIntegration,
+      calendarId,
+      client,
+    });
     let deleted = 0;
 
-    do {
-      const page = await client.listEvents({
+    for (const target of targets) {
+      deleted += await deleteGoogleCalendarEventsFromTarget({
         accessToken: token.accessToken,
-        calendarId: activeIntegration.calendar_id,
-        pageToken,
-      });
-
-      eventIds.push(...page.events.map((event) => event.id));
-
-      pageToken = page.nextPageToken;
-    } while (pageToken !== null);
-
-    for (const eventId of eventIds) {
-      const didDelete = await deleteManagedEvent({
-        accessToken: token.accessToken,
-        calendarId: activeIntegration.calendar_id,
+        calendarId: target.id,
         client,
-        eventId,
       });
-
-      if (didDelete) {
-        deleted += 1;
-      }
     }
 
     await repository.markActiveCalendarEventSyncsDeleted(activeIntegration.id);
@@ -301,10 +312,23 @@ export async function syncGoogleCalendar({
     }
 
     const token = await client.refreshAccessToken(refreshToken);
+    const calendarId = activeIntegration.calendar_id;
+    const integration = await ensureGoogleCalendarTargetForSync({
+      accessToken: token.accessToken,
+      activeIntegration,
+      calendarId,
+      client,
+    });
+    const syncCalendarId = integration.calendar_id;
+
+    if (syncCalendarId === null) {
+      throw new Error('Google Calendar target is missing');
+    }
+
     const materialized = await materializePaymentReminderOccurrences({
       days: GOOGLE_CALENDAR_SYNC_DAYS,
     });
-    const existingSyncs = await getActiveCalendarEventSyncs(activeIntegration.id);
+    const existingSyncs = await getActiveCalendarEventSyncs(integration.id);
     const plan = planGoogleCalendarSync({
       existingSyncs,
       occurrences: materialized.occurrences,
@@ -313,34 +337,34 @@ export async function syncGoogleCalendar({
     for (const action of plan.insert) {
       await insertOrUpdateEvent({
         accessToken: token.accessToken,
-        calendarId: activeIntegration.calendar_id,
+        calendarId: syncCalendarId,
         client,
         event: action.event,
       });
-      await saveSyncedEvent(activeIntegration.id, action.occurrence, action.event);
+      await saveSyncedEvent(integration.id, action.occurrence, action.event);
     }
 
     for (const action of plan.update) {
       await updateOrInsertEvent({
         accessToken: token.accessToken,
-        calendarId: activeIntegration.calendar_id,
+        calendarId: syncCalendarId,
         client,
         event: action.event,
       });
-      await saveSyncedEvent(activeIntegration.id, action.occurrence, action.event);
+      await saveSyncedEvent(integration.id, action.occurrence, action.event);
     }
 
     for (const action of plan.delete) {
       await deleteManagedEvent({
         accessToken: token.accessToken,
-        calendarId: activeIntegration.calendar_id,
+        calendarId: syncCalendarId,
         client,
         eventId: action.syncRow.google_event_id,
       });
       await markCalendarEventSyncDeleted(action.syncRow.id);
     }
 
-    await markGoogleIntegrationSynced(activeIntegration.id);
+    await markGoogleIntegrationSynced(integration.id);
 
     return {
       deleted: plan.delete.length,
@@ -369,6 +393,34 @@ export function openCalendarOccurrences(
   return occurrences.filter(isCalendarSyncOccurrence);
 }
 
+export async function resolveGoogleCalendarForConnection({
+  accessToken,
+  client,
+  preferredCalendar,
+}: {
+  accessToken: string;
+  client: GoogleCalendarClient;
+  preferredCalendar: GoogleCalendarTarget | null;
+}): Promise<GoogleCalendarTarget> {
+  if (
+    preferredCalendar !== null &&
+    (await canUseCalendar({
+      accessToken,
+      calendarId: preferredCalendar.id,
+      client,
+    }))
+  ) {
+    return preferredCalendar;
+  }
+
+  const calendars = await listAvailableCalendars(client, accessToken);
+  const existing = calendars.find(
+    (calendar) => calendar.summary === GOOGLE_CALENDAR_NAME,
+  );
+
+  return existing ?? client.createCalendar(accessToken, GOOGLE_CALENDAR_NAME);
+}
+
 async function deleteManagedEvent({
   accessToken,
   calendarId,
@@ -392,18 +444,6 @@ async function deleteManagedEvent({
   }
 }
 
-async function findOrCreateCalendar(
-  client: GoogleCalendarClient,
-  accessToken: string,
-) {
-  const calendars = await listAvailableCalendars(client, accessToken);
-  const existing = calendars.find(
-    (calendar) => calendar.summary === GOOGLE_CALENDAR_NAME,
-  );
-
-  return existing ?? client.createCalendar(accessToken, GOOGLE_CALENDAR_NAME);
-}
-
 async function listAvailableCalendars(
   client: GoogleCalendarClient,
   accessToken: string,
@@ -417,6 +457,151 @@ async function listAvailableCalendars(
 
     throw error;
   }
+}
+
+async function canUseCalendar({
+  accessToken,
+  calendarId,
+  client,
+}: {
+  accessToken: string;
+  calendarId: string;
+  client: GoogleCalendarClient;
+}): Promise<boolean> {
+  try {
+    await client.listEvents({
+      accessToken,
+      calendarId,
+      pageToken: null,
+    });
+
+    return true;
+  } catch (error) {
+    if (isGoogleStatus(error, 403) || isGoogleStatus(error, 404)) {
+      return false;
+    }
+
+    throw error;
+  }
+}
+
+async function ensureGoogleCalendarTargetForSync({
+  accessToken,
+  activeIntegration,
+  calendarId,
+  client,
+}: {
+  accessToken: string;
+  activeIntegration: CalendarIntegrationRow;
+  calendarId: string;
+  client: GoogleCalendarClient;
+}): Promise<CalendarIntegrationRow> {
+  if (
+    await canUseCalendar({
+      accessToken,
+      calendarId,
+      client,
+    })
+  ) {
+    return activeIntegration;
+  }
+
+  const calendar = await resolveGoogleCalendarForConnection({
+    accessToken,
+    client,
+    preferredCalendar: null,
+  });
+  const integration = await upsertGoogleIntegration({
+    accountEmail: activeIntegration.account_email,
+    calendarId: calendar.id,
+    calendarName: calendar.summary,
+    providerAccountId: activeIntegration.provider_account_id,
+    scopes: activeIntegration.scopes,
+    tokenRef: activeIntegration.token_ref ?? googleRefreshTokenRef,
+  });
+
+  await markActiveCalendarEventSyncsDeleted(integration.id);
+
+  return integration;
+}
+
+async function googleCalendarDeletionTargets({
+  accessToken,
+  activeIntegration,
+  calendarId,
+  client,
+}: {
+  accessToken: string;
+  activeIntegration: CalendarIntegrationRow;
+  calendarId: string;
+  client: GoogleCalendarClient;
+}): Promise<GoogleCalendarTarget[]> {
+  const calendars = await listAvailableCalendars(client, accessToken);
+  const targets = new Map<string, GoogleCalendarTarget>();
+
+  targets.set(calendarId, {
+    id: calendarId,
+    summary: activeIntegration.calendar_name,
+  });
+
+  for (const calendar of calendars) {
+    if (calendar.summary === GOOGLE_CALENDAR_NAME) {
+      targets.set(calendar.id, calendar);
+    }
+  }
+
+  return [...targets.values()];
+}
+
+async function deleteGoogleCalendarEventsFromTarget({
+  accessToken,
+  calendarId,
+  client,
+}: {
+  accessToken: string;
+  calendarId: string;
+  client: GoogleCalendarClient;
+}): Promise<number> {
+  let pageToken: string | null = null;
+  const eventIds: string[] = [];
+  let deleted = 0;
+
+  do {
+    let page;
+
+    try {
+      page = await client.listEvents({
+        accessToken,
+        calendarId,
+        pageToken,
+      });
+    } catch (error) {
+      if (isGoogleStatus(error, 403) || isGoogleStatus(error, 404)) {
+        return deleted;
+      }
+
+      throw error;
+    }
+
+    eventIds.push(...page.events.map((event) => event.id));
+
+    pageToken = page.nextPageToken;
+  } while (pageToken !== null);
+
+  for (const eventId of eventIds) {
+    const didDelete = await deleteManagedEvent({
+      accessToken,
+      calendarId,
+      client,
+      eventId,
+    });
+
+    if (didDelete) {
+      deleted += 1;
+    }
+  }
+
+  return deleted;
 }
 
 async function insertOrUpdateEvent({

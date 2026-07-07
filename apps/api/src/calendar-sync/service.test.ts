@@ -4,6 +4,7 @@ import { GoogleCalendarApiError } from './googleClient.js';
 import { InMemorySecretStore } from './secretStore.js';
 import {
   deleteGoogleCalendarEvents,
+  resolveGoogleCalendarForConnection,
   type CalendarSyncRepository,
 } from './service.js';
 import type {
@@ -99,6 +100,239 @@ describe('deleteGoogleCalendarEvents', () => {
       ],
     );
     assert.equal(markedIntegrationId, 'integration-1');
+  });
+
+  it('also deletes events from visible duplicate FinHunter calendars', async () => {
+    const secretStore = new InMemorySecretStore();
+    await secretStore.set('token-ref', 'refresh-token');
+
+    const deletedInputs: GoogleCalendarEventDeleteInput[] = [];
+    const listedInputs: GoogleCalendarEventListInput[] = [];
+    const client = googleClient({
+      async deleteEvent(input) {
+        deletedInputs.push(input);
+      },
+      async listCalendars() {
+        return [
+          {
+            id: 'old-calendar',
+            summary: 'FinHunter Reminders',
+          },
+          {
+            id: 'family-calendar',
+            summary: 'Family',
+          },
+        ];
+      },
+      async listEvents(input) {
+        listedInputs.push(input);
+
+        return {
+          events:
+            input.calendarId === 'new-calendar'
+              ? [{ id: 'new-event' }]
+              : [{ id: 'old-event' }],
+          nextPageToken: null,
+        };
+      },
+      async refreshAccessToken(refreshToken) {
+        assert.equal(refreshToken, 'refresh-token');
+
+        return {
+          accessToken: 'access-token',
+          expiresIn: 3600,
+          refreshToken: null,
+          scope: null,
+        };
+      },
+    });
+    const repository: CalendarSyncRepository = {
+      async getGoogleIntegration() {
+        return integrationRow({
+          calendar_id: 'new-calendar',
+          id: 'integration-1',
+          token_ref: 'token-ref',
+        });
+      },
+      async markActiveCalendarEventSyncsDeleted() {
+        return 2;
+      },
+    };
+
+    const result = await deleteGoogleCalendarEvents({
+      client,
+      repository,
+      secretStore,
+    });
+
+    assert.equal(result.deleted, 2);
+    assert.deepEqual(
+      listedInputs.map((input) => input.calendarId),
+      ['new-calendar', 'old-calendar'],
+    );
+    assert.deepEqual(
+      deletedInputs.map((input) => ({
+        calendarId: input.calendarId,
+        eventId: input.eventId,
+      })),
+      [
+        { calendarId: 'new-calendar', eventId: 'new-event' },
+        { calendarId: 'old-calendar', eventId: 'old-event' },
+      ],
+    );
+  });
+
+  it('skips an inaccessible stored calendar while deleting visible duplicates', async () => {
+    const secretStore = new InMemorySecretStore();
+    await secretStore.set('token-ref', 'refresh-token');
+
+    const deletedInputs: GoogleCalendarEventDeleteInput[] = [];
+    const client = googleClient({
+      async deleteEvent(input) {
+        deletedInputs.push(input);
+      },
+      async listCalendars() {
+        return [
+          {
+            id: 'old-calendar',
+            summary: 'FinHunter Reminders',
+          },
+        ];
+      },
+      async listEvents(input) {
+        if (input.calendarId === 'missing-calendar') {
+          throw new GoogleCalendarApiError('Missing calendar', 404);
+        }
+
+        return {
+          events: [{ id: 'old-event' }],
+          nextPageToken: null,
+        };
+      },
+      async refreshAccessToken(refreshToken) {
+        assert.equal(refreshToken, 'refresh-token');
+
+        return {
+          accessToken: 'access-token',
+          expiresIn: 3600,
+          refreshToken: null,
+          scope: null,
+        };
+      },
+    });
+    const repository: CalendarSyncRepository = {
+      async getGoogleIntegration() {
+        return integrationRow({
+          calendar_id: 'missing-calendar',
+          id: 'integration-1',
+          token_ref: 'token-ref',
+        });
+      },
+      async markActiveCalendarEventSyncsDeleted() {
+        return 1;
+      },
+    };
+
+    const result = await deleteGoogleCalendarEvents({
+      client,
+      repository,
+      secretStore,
+    });
+
+    assert.equal(result.deleted, 1);
+    assert.deepEqual(
+      deletedInputs.map((input) => ({
+        calendarId: input.calendarId,
+        eventId: input.eventId,
+      })),
+      [{ calendarId: 'old-calendar', eventId: 'old-event' }],
+    );
+  });
+});
+
+describe('resolveGoogleCalendarForConnection', () => {
+  it('reuses the stored calendar id when it is still accessible', async () => {
+    let didCreateCalendar = false;
+    const listedCalendars: string[] = [];
+    const client = googleClient({
+      async createCalendar() {
+        didCreateCalendar = true;
+
+        return {
+          id: 'created-calendar',
+          summary: 'FinHunter Reminders',
+        };
+      },
+      async listCalendars() {
+        listedCalendars.push('calendar-list');
+
+        return [];
+      },
+      async listEvents(input) {
+        assert.equal(input.calendarId, 'old-calendar');
+
+        return {
+          events: [],
+          nextPageToken: null,
+        };
+      },
+    });
+
+    const calendar = await resolveGoogleCalendarForConnection({
+      accessToken: 'access-token',
+      client,
+      preferredCalendar: {
+        id: 'old-calendar',
+        summary: 'FinHunter Reminders',
+      },
+    });
+
+    assert.deepEqual(calendar, {
+      id: 'old-calendar',
+      summary: 'FinHunter Reminders',
+    });
+    assert.equal(didCreateCalendar, false);
+    assert.deepEqual(listedCalendars, []);
+  });
+
+  it('falls back to a visible FinHunter calendar when the stored id is inaccessible', async () => {
+    let didCreateCalendar = false;
+    const client = googleClient({
+      async createCalendar() {
+        didCreateCalendar = true;
+
+        return {
+          id: 'created-calendar',
+          summary: 'FinHunter Reminders',
+        };
+      },
+      async listCalendars() {
+        return [
+          {
+            id: 'visible-calendar',
+            summary: 'FinHunter Reminders',
+          },
+        ];
+      },
+      async listEvents() {
+        throw new GoogleCalendarApiError('Missing calendar', 404);
+      },
+    });
+
+    const calendar = await resolveGoogleCalendarForConnection({
+      accessToken: 'access-token',
+      client,
+      preferredCalendar: {
+        id: 'missing-calendar',
+        summary: 'FinHunter Reminders',
+      },
+    });
+
+    assert.deepEqual(calendar, {
+      id: 'visible-calendar',
+      summary: 'FinHunter Reminders',
+    });
+    assert.equal(didCreateCalendar, false);
   });
 });
 
