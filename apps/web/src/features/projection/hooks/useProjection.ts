@@ -1,10 +1,11 @@
 import { useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
-import { fetchJson } from '../lib/api';
-import { appendAccountParam, formatDateKey } from '../utils';
-import { useAccountFilter } from './useAccountFilter';
-import { useCategories, type Category } from './useCategories';
-import type { IncomeVsExpenses } from './useIncomeVsExpenses';
+import { fetchJson } from '../../../lib/api';
+import { appendAccountParam, formatDateKey } from '../../../utils';
+import { useAccountFilter } from '../../../hooks/useAccountFilter';
+import { useCategories, type Category } from '../../../hooks/useCategories';
+import type { IncomeVsExpenses } from '../../../hooks/useIncomeVsExpenses';
+import { formatProjectionMonth } from '../utils/monthFormatting';
 import type { ProjectionCustomExpenseExclusion } from './useProjectionSettings';
 
 export type ProjectionExpenseExclusion = {
@@ -351,13 +352,4 @@ function toMonthEndDate(month: string): string {
   const [year = 0, monthNumber = 1] = month.split('-').map(Number);
 
   return formatDateKey(new Date(year, monthNumber, 0));
-}
-
-function formatProjectionMonth(month: string): string {
-  const [year = 0, monthNumber = 1] = month.split('-').map(Number);
-
-  return new Intl.DateTimeFormat(undefined, {
-    month: 'short',
-    year: 'numeric',
-  }).format(new Date(year, monthNumber - 1, 1));
 }

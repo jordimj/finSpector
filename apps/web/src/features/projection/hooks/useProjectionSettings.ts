@@ -46,6 +46,14 @@ export function createProjectionExpenseExclusionId(
     : `subcategory:${subcategoryId}`;
 }
 
+export function createProjectionEventId(): string {
+  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
+    return crypto.randomUUID();
+  }
+
+  return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
 export function useProjectionSettings(): [
   ProjectionSettings,
   Dispatch<SetStateAction<ProjectionSettings>>,
@@ -204,14 +212,6 @@ function toPositiveInteger(value: unknown): number | null {
 
 function toTrimmedText(value: unknown): string {
   return typeof value === 'string' ? value.trim() : '';
-}
-
-function createProjectionEventId(): string {
-  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
-    return crypto.randomUUID();
-  }
-
-  return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

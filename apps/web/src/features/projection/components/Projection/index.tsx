@@ -1,0 +1,110 @@
+import { useMemo } from 'react';
+import { AssumptionsPanel } from '../AssumptionsPanel';
+import { applyProjectionScenario } from '../../utils/applyProjectionScenario';
+import { formatMonthRange } from '../../utils/monthFormatting';
+import { useProjection } from '../../hooks/useProjection';
+import { useProjectionSettings } from '../../hooks/useProjectionSettings';
+import { CashflowChartCard } from './CashflowChartCard';
+import { Header } from './Header';
+import { Notice } from './Notice';
+import { ScheduledPaymentsPanel } from './ScheduledPaymentsPanel';
+import { SummaryTiles } from './SummaryTiles';
+
+export function Projection() {
+  const [projectionSettings, setProjectionSettings] = useProjectionSettings();
+  const projection = useProjection({
+    activeExpenseExclusionKeys:
+      projectionSettings.activeExpenseExclusionKeys,
+    customExpenseExclusions: projectionSettings.customExpenseExclusions,
+  });
+  const baselineData = projection.data;
+  const data = useMemo(
+    () =>
+      baselineData === undefined
+        ? undefined
+        : applyProjectionScenario(baselineData, projectionSettings),
+    [baselineData, projectionSettings],
+  );
+  const incomeTotal = Number(data?.totals.income ?? 0);
+  const expensesTotal = Number(data?.totals.expenses ?? 0);
+  const netTotal = Number(data?.totals.net ?? incomeTotal - expensesTotal);
+  const hasSurplus = netTotal >= 0;
+  const hasProjectionValues =
+    data?.months.some(
+      (month) => month.incomeAmount > 0 || month.expensesAmount > 0,
+    ) ?? false;
+  const periodLabel =
+    data === undefined
+      ? 'Current month + 11 months'
+      : formatMonthRange(data.projection);
+  const historyLabel =
+    data === undefined
+      ? 'Last 12 completed months'
+      : formatMonthRange(data.history);
+  const activeExclusionCount =
+    baselineData?.exclusions.filter((exclusion) => exclusion.active).length ??
+    projectionSettings.activeExpenseExclusionKeys.length +
+      projectionSettings.customExpenseExclusions.length;
+
+  return (
+    <section className='mx-auto max-w-[1600px]'>
+      <Header historyLabel={historyLabel} periodLabel={periodLabel} />
+
+      {projection.isError ? (
+        <Notice
+          title='Projection unavailable'
+          description='Check that the API is running and the category list can be loaded.'
+          tone='rose'
+        />
+      ) : null}
+
+      {baselineData?.hasMissingConfiguration ? (
+        <Notice
+          title='Projection configuration needs attention'
+          description='Some configured expense exclusions or income sources were not found, so those rows are marked below.'
+          tone='amber'
+        />
+      ) : null}
+
+      {data !== undefined && !hasProjectionValues ? (
+        <Notice
+          title='No projection data yet'
+          description='The report is ready, but there are no matching historical expenses or configured income rows.'
+          tone='lavender'
+        />
+      ) : null}
+
+      <SummaryTiles
+        activeExclusionCount={activeExclusionCount}
+        expensesTotal={expensesTotal}
+        hasSurplus={hasSurplus}
+        incomeTotal={incomeTotal}
+        isLoading={projection.isLoading}
+        netTotal={netTotal}
+        periodLabel={periodLabel}
+        savingsRate={data?.totals.savingsRate}
+      />
+
+      <div className='mt-8 grid gap-5 xl:grid-cols-2'>
+        <CashflowChartCard
+          data={data?.chartData}
+          isError={projection.isError}
+          isLoading={projection.isLoading}
+        />
+
+        <AssumptionsPanel
+          baselineData={baselineData}
+          data={data}
+          isLoading={projection.isLoading}
+          onSettingsChange={setProjectionSettings}
+          settings={projectionSettings}
+        />
+      </div>
+
+      <ScheduledPaymentsPanel
+        isProjectionLoading={projection.isLoading}
+        months={data?.months ?? []}
+      />
+    </section>
+  );
+}
