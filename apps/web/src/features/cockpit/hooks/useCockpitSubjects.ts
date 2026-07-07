@@ -4,10 +4,10 @@ import type {
   CockpitSubjectListResponse,
   CockpitSubjectSlug,
 } from '@finance/shared';
-import { fetchJson } from '../lib/api';
-import type { ReportDateRange } from '../types';
-import { toReportQueryString } from '../utils';
-import { useAccountFilter } from './useAccountFilter';
+import { fetchJson } from '../../../lib/api';
+import type { ReportDateRange } from '../../../types';
+import { toReportQueryString } from '../../../utils';
+import { useAccountFilter } from '../../../hooks/useAccountFilter';
 
 export function useCockpitSubjects(range: ReportDateRange) {
   const { selectedAccount } = useAccountFilter();
