@@ -4,8 +4,8 @@ import { Link } from 'react-router-dom';
 import type {
   LastMonthExpensePoint,
   LastMonthExpenses,
-} from '../hooks/useLastMonthExpenses';
-import { formatCurrency } from '../utils';
+} from '../../hooks/useLastMonthExpenses';
+import { formatCurrency } from '../../../../utils';
 
 type DashboardInsightCardProps = {
   className?: string;

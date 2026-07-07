@@ -3,8 +3,8 @@ import {
   getPersonalTransactionAmount,
   type ExpenseAccount,
 } from '@finance/shared';
-import { fetchJson } from '../lib/api';
-import type { AccountFilter, DateRange } from '../types';
+import { fetchJson } from '../../../lib/api';
+import type { DateRange } from '../../../types';
 import {
   appendAccountParam,
   formatDateKey,
@@ -13,8 +13,8 @@ import {
   getCompletedMonthRange,
   getLastMonthRange,
   parseDateKey,
-} from '../utils';
-import { useAccountFilter } from './useAccountFilter';
+} from '../../../utils';
+import { useAccountFilter } from '../../../hooks/useAccountFilter';
 
 const lastMonthExpensePageSize = 500;
 
@@ -50,7 +50,14 @@ const rangeConfigs = {
     monthCount: 12,
     queryLabel: 'last-year',
   },
-};
+} satisfies Record<
+  LastMonthExpenseRange,
+  {
+    bucket: LastMonthExpenseBucket;
+    monthCount: number;
+    queryLabel: string;
+  }
+>;
 
 type ExpenseTransaction = {
   account: ExpenseAccount | null;

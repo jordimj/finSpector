@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
-import { useAccountFilter } from './useAccountFilter';
-import { fetchTransactionsPage } from './useTransactions';
+import { useAccountFilter } from '../../../hooks/useAccountFilter';
+import { fetchTransactionsPage } from '../../../hooks/useTransactions';
 
 export function useRecentTransactions() {
   const { selectedAccount } = useAccountFilter();

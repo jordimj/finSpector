@@ -1,12 +1,13 @@
 import { DEFAULT_PAYMENT_REMINDER_HORIZON_DAYS } from '@finance/shared';
-import { CalendarClock, CircleAlert, Loader2 } from 'lucide-react';
+import { CalendarClock, Loader2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { isOpenOccurrence } from './upcoming/reminderUi';
-import { useUpcomingPaymentReminders } from '../hooks/paymentReminders/useUpcomingPaymentReminders';
+import { isOpenOccurrence } from '../../../../components/upcoming/reminderUi';
+import { useUpcomingPaymentReminders } from '../../../../hooks/paymentReminders/useUpcomingPaymentReminders';
 import {
   formatTransactionCurrency,
   formatTransactionDate,
-} from '../utils';
+} from '../../../../utils';
+import { CardNotice } from './CardNotice';
 
 export function UpcomingPaymentsCard() {
   const upcoming = useUpcomingPaymentReminders();
@@ -93,27 +94,5 @@ export function UpcomingPaymentsCard() {
         </div>
       )}
     </section>
-  );
-}
-
-function CardNotice({
-  description,
-  title,
-}: {
-  description: string;
-  title: string;
-}) {
-  return (
-    <div className='rounded-md border border-accent-rose/35 bg-accent-rose/10 p-4'>
-      <div className='flex gap-3'>
-        <CircleAlert className='mt-0.5 size-5 shrink-0 text-accent-rose' />
-        <div>
-          <p className='text-sm font-semibold text-ink'>{title}</p>
-          <p className='mt-1 text-sm font-medium text-muted-strong'>
-            {description}
-          </p>
-        </div>
-      </div>
-    </div>
   );
 }

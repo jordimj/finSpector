@@ -1,7 +1,7 @@
 import { ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { TransactionTableHeader } from '../../../../components/TransactionTableHeader';
 import { RecentTransactionsList } from './RecentTransactionsList';
-import { TransactionTableHeader } from './TransactionTableHeader';
 
 export function RecentTransactionsCard() {
   return (

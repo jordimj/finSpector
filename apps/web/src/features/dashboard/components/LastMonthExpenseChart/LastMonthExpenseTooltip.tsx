@@ -1,5 +1,5 @@
-import type { LastMonthExpensePoint } from '../hooks/useLastMonthExpenses';
-import { formatCurrency } from '../utils';
+import type { LastMonthExpensePoint } from '../../hooks/useLastMonthExpenses';
+import { formatCurrency } from '../../../../utils';
 
 type LastMonthExpenseTooltipProps = {
   active?: boolean;

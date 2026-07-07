@@ -1,5 +1,5 @@
-import { useRecentTransactions } from '../hooks/useRecentTransactions';
-import { TransactionsTableContent } from './TransactionsTableContent';
+import { TransactionsTableContent } from '../../../../components/TransactionsTableContent';
+import { useRecentTransactions } from '../../hooks/useRecentTransactions';
 
 export function RecentTransactionsList() {
   const recentTransactions = useRecentTransactions();
