@@ -1,17 +1,22 @@
+import type { CSSProperties } from 'react';
 import type { LastMonthExpenses } from '../hooks/useLastMonthExpenses';
 import { formatCurrency, formatDateRange } from '../utils';
 import { LastMonthExpenseChart } from './LastMonthExpenseChart';
 
 type LastMonthExpensesCardProps = {
+  className?: string;
   data?: LastMonthExpenses;
   isError: boolean;
   isLoading: boolean;
+  style?: CSSProperties;
 };
 
 export function LastMonthExpensesCard({
+  className,
   data,
   isError,
   isLoading,
+  style,
 }: LastMonthExpensesCardProps) {
   const periodLabel =
     data === undefined
@@ -21,7 +26,15 @@ export function LastMonthExpensesCard({
     data?.dailyExpenses.filter((point) => point.amount > 0).length ?? 0;
 
   return (
-    <div className='flex min-h-[24rem] flex-col rounded-lg border border-line bg-panel p-5 shadow-shell'>
+    <div
+      className={[
+        'flex min-h-[24rem] flex-col rounded-lg border border-line bg-panel p-5 shadow-shell',
+        className,
+      ]
+        .filter(Boolean)
+        .join(' ')}
+      style={style}
+    >
       <div className='mb-4 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between'>
         <div>
           <p className='text-xs font-bold uppercase tracking-[0.14em] text-muted-strong'>

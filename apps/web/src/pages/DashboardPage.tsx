@@ -3,7 +3,7 @@ import {
   getPersonalTransactionAmount,
   type Transaction,
 } from '@finance/shared';
-import type { ReactNode } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 import { DashboardInsightCard } from '../components/DashboardInsightCard';
 import { LastMonthExpensesCard } from '../components/LastMonthExpensesCard';
 import { RecentTransactionsCard } from '../components/RecentTransactionsCard';
@@ -24,7 +24,10 @@ export function DashboardPage() {
 
   return (
     <section className='mx-auto max-w-[1600px]'>
-      <div className='mb-7 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between'>
+      <div
+        className='dashboard-reveal mb-7 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between'
+        style={getRevealStyle(0)}
+      >
         <div>
           <h1 className='text-3xl font-semibold tracking-normal text-ink md:text-4xl'>
             Monthly overview
@@ -42,42 +45,54 @@ export function DashboardPage() {
 
       <div className='grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]'>
         <LastMonthExpensesCard
+          className='dashboard-reveal min-w-0'
           data={lastMonthExpenses.data}
           isError={lastMonthExpenses.isError}
           isLoading={lastMonthExpenses.isLoading}
+          style={getRevealStyle(70)}
         />
 
         <DashboardInsightCard
+          className='dashboard-reveal h-full min-w-0'
           data={lastMonthExpenses.data}
           isLoading={lastMonthExpenses.isLoading}
+          style={getRevealStyle(140)}
         />
       </div>
 
-      <div className='mt-8'>
+      <div className='dashboard-reveal mt-8' style={getRevealStyle(210)}>
         <UpcomingPaymentsCard />
       </div>
 
       <div className='mt-8'>
-        <h2 className='mb-4 text-xl font-semibold tracking-normal text-ink'>
+        <h2
+          className='dashboard-reveal mb-4 text-xl font-semibold tracking-normal text-ink'
+          style={getRevealStyle(280)}
+        >
           Connected accounts
         </h2>
         <div className='grid gap-5 md:grid-cols-3'>
-          {accountSummaries.map((account) => (
-            <SummaryTile
+          {accountSummaries.map((account, index) => (
+            <div
               key={account.label}
-              badge={account.badge}
-              detail={account.detail}
-              footer={account.footer}
-              icon={account.icon}
-              label={account.label}
-              tone={account.tone}
-              value={account.value}
-            />
+              className='dashboard-reveal'
+              style={getRevealStyle(350 + index * 70)}
+            >
+              <SummaryTile
+                badge={account.badge}
+                detail={account.detail}
+                footer={account.footer}
+                icon={account.icon}
+                label={account.label}
+                tone={account.tone}
+                value={account.value}
+              />
+            </div>
           ))}
         </div>
       </div>
 
-      <div className='mt-8'>
+      <div className='dashboard-reveal mt-8' style={getRevealStyle(590)}>
         <RecentTransactionsCard />
       </div>
     </section>
@@ -165,4 +180,10 @@ function formatSignedTransactionCurrency(value: number): string {
   const prefix = value > 0 ? '+' : '-';
 
   return `${prefix}${formatTransactionCurrency(Math.abs(value))}`;
+}
+
+function getRevealStyle(delayMs: number): CSSProperties {
+  return {
+    '--delay': `${delayMs}ms`,
+  } as CSSProperties;
 }

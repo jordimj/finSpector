@@ -1,4 +1,5 @@
 import { Rocket, Target } from 'lucide-react';
+import type { CSSProperties } from 'react';
 import { Link } from 'react-router-dom';
 import type {
   LastMonthExpensePoint,
@@ -7,13 +8,17 @@ import type {
 import { formatCurrency } from '../utils';
 
 type DashboardInsightCardProps = {
+  className?: string;
   data?: LastMonthExpenses;
   isLoading: boolean;
+  style?: CSSProperties;
 };
 
 export function DashboardInsightCard({
+  className,
   data,
   isLoading,
+  style,
 }: DashboardInsightCardProps) {
   const activeDays =
     data?.dailyExpenses.filter((point) => point.amount > 0).length ?? 0;
@@ -24,7 +29,15 @@ export function DashboardInsightCard({
   const peakDay = findPeakExpenseDay(data?.dailyExpenses ?? []);
 
   return (
-    <aside className='flex min-h-[24rem] flex-col justify-between rounded-lg bg-accent-lavender p-6 text-canvas shadow-shell'>
+    <aside
+      className={[
+        'flex min-h-[24rem] flex-col justify-between rounded-lg bg-accent-lavender p-6 text-canvas shadow-shell',
+        className,
+      ]
+        .filter(Boolean)
+        .join(' ')}
+      style={style}
+    >
       <div>
         <div className='mb-7 flex items-start justify-between gap-4'>
           <span className='flex size-10 items-center justify-center rounded-md bg-canvas/10 text-canvas'>
