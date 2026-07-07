@@ -5,6 +5,7 @@
     "projections",
     "importer",
     "upcoming",
-    "dashboard"
+    "dashboard",
+    "cockpit"
   ]
 }
