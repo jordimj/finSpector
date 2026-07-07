@@ -20,6 +20,19 @@ export function getLastMonthRange(now = new Date()): DateRange {
   };
 }
 
+export function getCompletedMonthRange(
+  monthCount: number,
+  now = new Date(),
+): DateRange {
+  const start = new Date(now.getFullYear(), now.getMonth() - monthCount, 1);
+  const end = new Date(now.getFullYear(), now.getMonth(), 0);
+
+  return {
+    startDate: formatDateKey(start),
+    endDate: formatDateKey(end),
+  };
+}
+
 export function getCurrentMonthRange(now = new Date()): DateRange {
   const start = new Date(now.getFullYear(), now.getMonth(), 1);
 
@@ -114,6 +127,13 @@ export function formatDayLabel(date: Date): string {
   return new Intl.DateTimeFormat(undefined, {
     month: 'short',
     day: 'numeric',
+  }).format(date);
+}
+
+export function formatMonthLabel(date: Date): string {
+  return new Intl.DateTimeFormat(undefined, {
+    month: 'short',
+    year: '2-digit',
   }).format(date);
 }
 

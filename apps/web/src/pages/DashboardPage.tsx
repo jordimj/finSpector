@@ -3,18 +3,23 @@ import {
   getPersonalTransactionAmount,
   type Transaction,
 } from '@finance/shared';
-import type { CSSProperties, ReactNode } from 'react';
+import { useState, type CSSProperties, type ReactNode } from 'react';
 import { DashboardInsightCard } from '../components/DashboardInsightCard';
 import { LastMonthExpensesCard } from '../components/LastMonthExpensesCard';
 import { RecentTransactionsCard } from '../components/RecentTransactionsCard';
 import { SummaryTile } from '../components/SummaryTile';
 import { UpcomingPaymentsCard } from '../components/UpcomingPaymentsCard';
-import { useLastMonthExpenses } from '../hooks/useLastMonthExpenses';
+import {
+  useLastMonthExpenses,
+  type LastMonthExpenseRange,
+} from '../hooks/useLastMonthExpenses';
 import { useRecentTransactions } from '../hooks/useRecentTransactions';
 import { formatTransactionCurrency } from '../utils';
 
 export function DashboardPage() {
-  const lastMonthExpenses = useLastMonthExpenses();
+  const [spendRange, setSpendRange] =
+    useState<LastMonthExpenseRange>('1m');
+  const lastMonthExpenses = useLastMonthExpenses(spendRange);
   const recentTransactions = useRecentTransactions();
   const accountSummaries = buildAccountSummaries(
     recentTransactions.data?.transactions ?? [],
@@ -45,10 +50,12 @@ export function DashboardPage() {
 
       <div className='grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]'>
         <LastMonthExpensesCard
+          activeRange={spendRange}
           className='dashboard-reveal min-w-0'
           data={lastMonthExpenses.data}
           isError={lastMonthExpenses.isError}
           isLoading={lastMonthExpenses.isLoading}
+          onRangeChange={setSpendRange}
           style={getRevealStyle(70)}
         />
 

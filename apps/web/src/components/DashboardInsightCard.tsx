@@ -20,13 +20,13 @@ export function DashboardInsightCard({
   isLoading,
   style,
 }: DashboardInsightCardProps) {
-  const activeDays =
+  const activePeriods =
     data?.dailyExpenses.filter((point) => point.amount > 0).length ?? 0;
-  const averageDailySpend =
+  const averagePeriodSpend =
     data === undefined || data.dailyExpenses.length === 0
       ? undefined
       : data.total / data.dailyExpenses.length;
-  const peakDay = findPeakExpenseDay(data?.dailyExpenses ?? []);
+  const peakPeriod = findPeakExpensePeriod(data?.dailyExpenses ?? []);
 
   return (
     <aside
@@ -53,8 +53,13 @@ export function DashboardInsightCard({
         </h2>
         <p className='mt-4 max-w-sm text-lg leading-8 text-canvas/75'>
           {isLoading
-            ? 'Reading your latest monthly spending pattern.'
-            : buildInsightText(activeDays, averageDailySpend, peakDay)}
+            ? 'Reading your latest spending pattern.'
+            : buildInsightText(
+                activePeriods,
+                averagePeriodSpend,
+                peakPeriod,
+                data?.bucket ?? 'day',
+              )}
         </p>
       </div>
 
@@ -70,22 +75,27 @@ export function DashboardInsightCard({
 }
 
 function buildInsightText(
-  activeDays: number,
-  averageDailySpend: number | undefined,
-  peakDay: LastMonthExpensePoint | undefined,
+  activePeriods: number,
+  averagePeriodSpend: number | undefined,
+  peakPeriod: LastMonthExpensePoint | undefined,
+  bucket: LastMonthExpenses['bucket'],
 ): string {
-  if (averageDailySpend === undefined) {
-    return 'Import transactions to unlock daily spend pacing and target insights.';
+  const averageLabel = bucket === 'month' ? 'monthly' : 'daily';
+  const activeLabel = bucket === 'month' ? 'active months' : 'active days';
+  const peakLabel = bucket === 'month' ? 'Peak month' : 'Peak day';
+
+  if (averagePeriodSpend === undefined) {
+    return `Import transactions to unlock ${averageLabel} spend pacing and target insights.`;
   }
 
-  if (peakDay === undefined || activeDays === 0) {
-    return `${formatCurrency(averageDailySpend)} average daily spend with no active expense days yet.`;
+  if (peakPeriod === undefined || activePeriods === 0) {
+    return `${formatCurrency(averagePeriodSpend)} average ${averageLabel} spend with no ${activeLabel} yet.`;
   }
 
-  return `${formatCurrency(averageDailySpend)} average daily spend across ${activeDays} active days. Peak day was ${peakDay.label}.`;
+  return `${formatCurrency(averagePeriodSpend)} average ${averageLabel} spend across ${activePeriods} ${activeLabel}. ${peakLabel} was ${peakPeriod.label}.`;
 }
 
-function findPeakExpenseDay(
+function findPeakExpensePeriod(
   points: LastMonthExpensePoint[],
 ): LastMonthExpensePoint | undefined {
   return points.reduce<LastMonthExpensePoint | undefined>((peak, point) => {

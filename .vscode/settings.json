@@ -4,6 +4,7 @@
     "transactions",
     "projections",
     "importer",
-    "upcoming"
+    "upcoming",
+    "dashboard"
   ]
 }

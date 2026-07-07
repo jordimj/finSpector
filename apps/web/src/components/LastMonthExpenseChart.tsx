@@ -30,7 +30,7 @@ export function LastMonthExpenseChart({
 
   if (isLoading) {
     return (
-      <div className='flex min-h-[250px] flex-1 items-end gap-2 rounded-md bg-canvas/45 p-4'>
+      <div className='flex min-h-[300px] flex-1 items-end gap-2 rounded-md bg-canvas/45 p-4'>
         {Array.from({ length: 12 }, (_, index) => (
           <div
             key={index}
@@ -72,7 +72,7 @@ export function LastMonthExpenseChart({
   return (
     <div
       ref={chartContainerRef}
-      className='min-h-[250px] flex-1 rounded-md bg-canvas/45 p-3'
+      className='min-h-[300px] flex-1 rounded-md bg-canvas/45 p-3'
     >
       {hasChartSize && chartSize !== null ? (
         <ResponsiveContainer
