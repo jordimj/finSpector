@@ -1,7 +1,7 @@
 import { CalendarClock } from 'lucide-react';
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { useUpcomingPaymentReminders } from '../../../../../hooks/paymentReminders/useUpcomingPaymentReminders';
+import { useUpcomingPaymentReminders } from '../../../../upcoming/hooks/paymentReminders/useUpcomingPaymentReminders';
 import { buildScheduledPaymentRows } from '../../../utils/buildScheduledPaymentRows';
 import type { ProjectionMonth } from '../../../hooks/useProjection';
 import { ScheduledPaymentTile } from './ScheduledPaymentTile';

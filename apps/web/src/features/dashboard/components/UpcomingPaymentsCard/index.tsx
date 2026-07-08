@@ -1,8 +1,8 @@
 import { DEFAULT_PAYMENT_REMINDER_HORIZON_DAYS } from '@finance/shared';
 import { CalendarClock, Loader2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { isOpenOccurrence } from '../../../../components/upcoming/reminderUi';
-import { useUpcomingPaymentReminders } from '../../../../hooks/paymentReminders/useUpcomingPaymentReminders';
+import { useUpcomingPaymentReminders } from '../../../upcoming/hooks/paymentReminders/useUpcomingPaymentReminders';
+import { isOpenOccurrence } from '../../../upcoming/utils/reminderUi';
 import {
   formatTransactionCurrency,
   formatTransactionDate,
