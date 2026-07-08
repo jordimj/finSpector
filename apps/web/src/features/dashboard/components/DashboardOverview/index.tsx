@@ -8,7 +8,7 @@ import {
   type LastMonthExpenseRange,
 } from '../../hooks/useLastMonthExpenses';
 import { useDashboardAccountSummaries } from '../../hooks/useDashboardAccountSummaries';
-import { getRevealStyle } from '../../utils/getRevealStyle';
+import { getRevealStyle } from '../../../../utils/getRevealStyle';
 import { ConnectedAccountsSection } from './ConnectedAccountsSection';
 import { DashboardHeader } from './DashboardHeader';
 

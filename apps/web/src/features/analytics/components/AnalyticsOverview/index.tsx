@@ -1,3 +1,4 @@
+import { getRevealStyle } from '../../../../utils/getRevealStyle';
 import { useAnalyticsReportState } from '../../hooks/useAnalyticsReportState';
 import { CategoryBreakdownSection } from './CategoryBreakdownSection';
 import { Header } from './Header';
@@ -11,6 +12,7 @@ export function AnalyticsOverview() {
       <Header
         activeComparisonPeriodLabel={report.activeComparisonPeriodLabel}
         categoryAmountType={report.categoryAmountType}
+        className='dashboard-reveal'
         dateRange={report.dateRange}
         isComparisonActive={report.isComparisonActive}
         isComparisonAvailable={report.isComparisonAvailable}
@@ -23,11 +25,20 @@ export function AnalyticsOverview() {
         onClearCategory={report.handleClearCategory}
         onComparisonEnabledChange={report.setIsComparisonEnabled}
         onDateRangeChange={report.handleDateRangeChange}
+        style={getRevealStyle(0)}
       />
 
-      <InsightCardsGrid report={report} />
+      <InsightCardsGrid
+        className='dashboard-reveal'
+        report={report}
+        style={getRevealStyle(70)}
+      />
 
-      <CategoryBreakdownSection report={report} />
+      <CategoryBreakdownSection
+        className='dashboard-reveal'
+        report={report}
+        style={getRevealStyle(140)}
+      />
     </section>
   );
 }

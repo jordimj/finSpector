@@ -1,19 +1,24 @@
 import { CalendarClock } from 'lucide-react';
-import { useMemo } from 'react';
+import { useMemo, type CSSProperties } from 'react';
 import { Link } from 'react-router-dom';
+import { cn } from '../../../../../lib/utils';
 import { useUpcomingPaymentReminders } from '../../../../upcoming/hooks/paymentReminders/useUpcomingPaymentReminders';
 import { buildScheduledPaymentRows } from '../../../utils/buildScheduledPaymentRows';
 import type { ProjectionMonth } from '../../../hooks/useProjection';
 import { ScheduledPaymentTile } from './ScheduledPaymentTile';
 
 type ScheduledPaymentsPanelProps = {
+  className?: string;
   isProjectionLoading: boolean;
   months: ProjectionMonth[];
+  style?: CSSProperties;
 };
 
 export function ScheduledPaymentsPanel({
+  className,
   isProjectionLoading,
   months,
+  style,
 }: ScheduledPaymentsPanelProps) {
   const upcomingPayments = useUpcomingPaymentReminders(365);
   const scheduledRows = useMemo(
@@ -26,7 +31,13 @@ export function ScheduledPaymentsPanel({
   );
 
   return (
-    <section className='mt-8 rounded-lg border border-line bg-panel p-5 shadow-shell'>
+    <section
+      className={cn(
+        'mt-8 rounded-lg border border-line bg-panel p-5 shadow-shell',
+        className,
+      )}
+      style={style}
+    >
       <div className='mb-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between'>
         <div>
           <h2 className='text-xl font-semibold tracking-normal text-ink'>

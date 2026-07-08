@@ -2,7 +2,7 @@ import { CreditCard, PiggyBank, Users } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { SummaryTile } from '../../../../components/SummaryTile';
 import type { DashboardAccountSummary } from '../../hooks/useDashboardAccountSummaries';
-import { getRevealStyle } from '../../utils/getRevealStyle';
+import { getRevealStyle } from '../../../../utils/getRevealStyle';
 
 type ConnectedAccountsSectionProps = {
   accountSummaries: DashboardAccountSummary[];

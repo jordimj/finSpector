@@ -1,15 +1,21 @@
+import type { CSSProperties } from 'react';
 import { CategoriesCard } from '../../../../components/CategoriesCard';
+import { cn } from '../../../../lib/utils';
 import { useAnalyticsReportState } from '../../hooks/useAnalyticsReportState';
 
 type CategoryBreakdownSectionProps = {
+  className?: string;
   report: ReturnType<typeof useAnalyticsReportState>;
+  style?: CSSProperties;
 };
 
 export function CategoryBreakdownSection({
+  className,
   report,
+  style,
 }: CategoryBreakdownSectionProps) {
   return (
-    <div className='mt-5'>
+    <div className={cn('mt-5', className)} style={style}>
       <CategoriesCard
         amountLabel={report.isIncomeView ? 'Income' : 'Spend'}
         categories={report.categories}

@@ -1,14 +1,28 @@
+import type { CSSProperties } from 'react';
 import { IncomeVsExpensesCard } from '../../../../components/IncomeVsExpensesCard';
+import { cn } from '../../../../lib/utils';
 import { ExpenseBreakdownCard } from '../ExpenseBreakdownCard';
 import { useAnalyticsReportState } from '../../hooks/useAnalyticsReportState';
 
 type InsightCardsGridProps = {
+  className?: string;
   report: ReturnType<typeof useAnalyticsReportState>;
+  style?: CSSProperties;
 };
 
-export function InsightCardsGrid({ report }: InsightCardsGridProps) {
+export function InsightCardsGrid({
+  className,
+  report,
+  style,
+}: InsightCardsGridProps) {
   return (
-    <div className='grid gap-5 xl:grid-cols-[minmax(320px,0.82fr)_minmax(0,1.18fr)]'>
+    <div
+      className={cn(
+        'grid gap-5 xl:grid-cols-[minmax(320px,0.82fr)_minmax(0,1.18fr)]',
+        className,
+      )}
+      style={style}
+    >
       <ExpenseBreakdownCard
         categories={report.categories}
         emptyDescription={report.emptyDescription}

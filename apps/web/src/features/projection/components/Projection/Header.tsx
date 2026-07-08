@@ -1,11 +1,27 @@
+import type { CSSProperties } from 'react';
+import { cn } from '../../../../lib/utils';
+
 type HeaderProps = {
+  className?: string;
   historyLabel: string;
   periodLabel: string;
+  style?: CSSProperties;
 };
 
-export function Header({ historyLabel, periodLabel }: HeaderProps) {
+export function Header({
+  className,
+  historyLabel,
+  periodLabel,
+  style,
+}: HeaderProps) {
   return (
-    <div className='mb-7 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between'>
+    <div
+      className={cn(
+        'mb-7 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between',
+        className,
+      )}
+      style={style}
+    >
       <div>
         <h1 className='text-3xl font-semibold tracking-normal text-ink md:text-4xl'>
           12-month projection

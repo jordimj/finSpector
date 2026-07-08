@@ -1,9 +1,11 @@
 import { ChevronLeft } from 'lucide-react';
+import type { CSSProperties } from 'react';
 import type { TransactionType } from '@finance/shared';
 import {
   DateRangePicker,
   type DateRangePresetKey,
 } from '../../../../components/DateRangePicker';
+import { cn } from '../../../../lib/utils';
 import type { ReportDateRange } from '../../../../types';
 import { AmountTypeControl } from './AmountTypeControl';
 import { ComparisonToggle } from './ComparisonToggle';
@@ -11,6 +13,7 @@ import { ComparisonToggle } from './ComparisonToggle';
 type HeaderProps = {
   activeComparisonPeriodLabel?: string;
   categoryAmountType: TransactionType;
+  className?: string;
   dateRange: ReportDateRange;
   isComparisonActive: boolean;
   isComparisonAvailable: boolean;
@@ -26,11 +29,13 @@ type HeaderProps = {
     nextDateRange: ReportDateRange,
     nextPresetKey: DateRangePresetKey | null,
   ) => void;
+  style?: CSSProperties;
 };
 
 export function Header({
   activeComparisonPeriodLabel,
   categoryAmountType,
+  className,
   dateRange,
   isComparisonActive,
   isComparisonAvailable,
@@ -43,9 +48,16 @@ export function Header({
   onClearCategory,
   onComparisonEnabledChange,
   onDateRangeChange,
+  style,
 }: HeaderProps) {
   return (
-    <div className='mb-7 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between'>
+    <div
+      className={cn(
+        'mb-7 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between',
+        className,
+      )}
+      style={style}
+    >
       <div>
         {isSubcategory ? (
           <button

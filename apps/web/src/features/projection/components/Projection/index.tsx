@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { getRevealStyle } from '../../../../utils/getRevealStyle';
 import { AssumptionsPanel } from '../AssumptionsPanel';
 import { applyProjectionScenario } from '../../utils/applyProjectionScenario';
 import { formatMonthRange } from '../../utils/monthFormatting';
@@ -13,8 +14,7 @@ import { SummaryTiles } from './SummaryTiles';
 export function Projection() {
   const [projectionSettings, setProjectionSettings] = useProjectionSettings();
   const projection = useProjection({
-    activeExpenseExclusionKeys:
-      projectionSettings.activeExpenseExclusionKeys,
+    activeExpenseExclusionKeys: projectionSettings.activeExpenseExclusionKeys,
     customExpenseExclusions: projectionSettings.customExpenseExclusions,
   });
   const baselineData = projection.data;
@@ -48,28 +48,39 @@ export function Projection() {
 
   return (
     <section className='mx-auto max-w-[1600px]'>
-      <Header historyLabel={historyLabel} periodLabel={periodLabel} />
+      <Header
+        className='dashboard-reveal'
+        historyLabel={historyLabel}
+        periodLabel={periodLabel}
+        style={getRevealStyle(0)}
+      />
 
       {projection.isError ? (
         <Notice
+          className='dashboard-reveal'
           title='Projection unavailable'
           description='Check that the API is running and the category list can be loaded.'
+          style={getRevealStyle(70)}
           tone='rose'
         />
       ) : null}
 
       {baselineData?.hasMissingConfiguration ? (
         <Notice
+          className='dashboard-reveal'
           title='Projection configuration needs attention'
           description='Some configured expense exclusions or income sources were not found, so those rows are marked below.'
+          style={getRevealStyle(70)}
           tone='amber'
         />
       ) : null}
 
       {data !== undefined && !hasProjectionValues ? (
         <Notice
+          className='dashboard-reveal'
           title='No projection data yet'
           description='The report is ready, but there are no matching historical expenses or configured income rows.'
+          style={getRevealStyle(70)}
           tone='lavender'
         />
       ) : null}
@@ -86,24 +97,33 @@ export function Projection() {
       />
 
       <div className='mt-8 grid gap-5 xl:grid-cols-2'>
-        <CashflowChartCard
-          data={data?.chartData}
-          isError={projection.isError}
-          isLoading={projection.isLoading}
-        />
+        <div className='dashboard-reveal min-w-0' style={getRevealStyle(350)}>
+          <CashflowChartCard
+            data={data?.chartData}
+            isError={projection.isError}
+            isLoading={projection.isLoading}
+          />
+        </div>
 
-        <AssumptionsPanel
-          baselineData={baselineData}
-          data={data}
-          isLoading={projection.isLoading}
-          onSettingsChange={setProjectionSettings}
-          settings={projectionSettings}
-        />
+        <div
+          className='dashboard-reveal h-full min-w-0'
+          style={getRevealStyle(420)}
+        >
+          <AssumptionsPanel
+            baselineData={baselineData}
+            data={data}
+            isLoading={projection.isLoading}
+            onSettingsChange={setProjectionSettings}
+            settings={projectionSettings}
+          />
+        </div>
       </div>
 
       <ScheduledPaymentsPanel
+        className='dashboard-reveal'
         isProjectionLoading={projection.isLoading}
         months={data?.months ?? []}
+        style={getRevealStyle(490)}
       />
     </section>
   );
