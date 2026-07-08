@@ -1,5 +1,5 @@
 import type { GoogleCalendarSyncStatus } from '../../hooks/calendarSync/types';
-import { formatSyncDate } from '../../../../utils/date';
+import { formatSyncDate } from '../../utils/calendarDate';
 import { StatusCopy } from './StatusCopy';
 
 export function StatusBody({

@@ -1,13 +1,13 @@
 import { PieChart } from 'lucide-react';
 import type { TransactionType } from '@finance/shared';
-import type { CategorySpend } from '../hooks/useCategorySpend';
+import type { CategorySpend } from '../../../hooks/useCategorySpend';
 import {
   formatCurrency,
   formatPercentage,
   formatRelativeChange,
-} from '../utils';
-import { getCategoryColor } from './categoryVisuals';
-import { CategorySpendChart } from './CategorySpendChart';
+} from '../../../utils';
+import { getCategoryColor } from '../../../components/categoryVisuals';
+import { CategorySpendChart } from '../../../components/CategorySpendChart';
 
 type ExpenseBreakdownCardProps = {
   categories: CategorySpend[];

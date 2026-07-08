@@ -1,10 +1,8 @@
 import { useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import type {
-  DateRangePresetKey,
-} from '../../../components/DateRangePicker';
-import type { FilterAutocompleteOption } from '../../../components/FilterAutocomplete';
+import type { DateRangePresetKey } from '../../../components/DateRangePicker';
 import type { ReportDateRange } from '../../../types';
+import type { FilterAutocompleteOption } from '../components/Filters/FilterAutocomplete';
 import type { TransactionTypeFilter } from './useTransactions';
 import {
   buildReportDateRange,

@@ -2,8 +2,8 @@ import {
   dateRangePresets,
   type DateRangePresetKey,
 } from '../../../components/DateRangePicker';
-import type { FilterAutocompleteOption } from '../../../components/FilterAutocomplete';
 import type { ReportDateRange } from '../../../types';
+import type { FilterAutocompleteOption } from '../components/Filters/FilterAutocomplete';
 import type { TransactionTypeFilter } from '../hooks/useTransactions';
 
 export type CategoryFilterOption = FilterAutocompleteOption & {

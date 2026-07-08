@@ -1,5 +1,5 @@
-import { ExpenseBreakdownCard } from '../../../../components/ExpenseBreakdownCard';
 import { IncomeVsExpensesCard } from '../../../../components/IncomeVsExpensesCard';
+import { ExpenseBreakdownCard } from '../ExpenseBreakdownCard';
 import { useAnalyticsReportState } from '../../hooks/useAnalyticsReportState';
 
 type InsightCardsGridProps = {

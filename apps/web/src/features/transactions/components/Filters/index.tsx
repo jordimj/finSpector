@@ -6,7 +6,7 @@ import {
 import {
   FilterAutocomplete,
   type FilterAutocompleteOption,
-} from '../../../../components/FilterAutocomplete';
+} from './FilterAutocomplete';
 import { cn } from '../../../../lib/utils';
 import type { ReportDateRange } from '../../../../types';
 import type { TransactionTypeFilter } from '../../hooks/useTransactions';
