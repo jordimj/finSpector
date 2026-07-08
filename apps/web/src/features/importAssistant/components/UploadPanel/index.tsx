@@ -1,9 +1,7 @@
 import { Loader2, Trash2, UploadCloud } from 'lucide-react';
-import type {
-  ChangeEvent,
-  DragEvent,
-} from 'react';
+import type { ChangeEvent, DragEvent } from 'react';
 import { cn } from '../../../../lib/utils';
+import { useImportAssistantState } from '../../hooks/useImportAssistantState';
 import { formatDraftSavedAt } from '../../utils/draftStorage';
 
 export type ImportFileDropHandlers = {
@@ -15,37 +13,25 @@ export type ImportFileDropHandlers = {
   setIsDraggingFile: (isDragging: boolean) => void;
 };
 
-export function UploadPanel({
-  applyToMatchingRows,
-  displayedFileName,
-  draftUpdatedAt,
-  errorMessage,
-  fileDrop,
-  hasReviewDraft,
-  isUploading,
-  onApplyToMatchingRowsChange,
-  onClearDraft,
-  rowsCount,
-  skippedCount,
-  sourceFileName,
-  suggestionCount,
-  unreviewedCount,
-}: {
-  applyToMatchingRows: boolean;
-  displayedFileName: string | null;
-  draftUpdatedAt: string | null;
-  errorMessage: string | null;
-  fileDrop: ImportFileDropHandlers;
-  hasReviewDraft: boolean;
-  isUploading: boolean;
-  onApplyToMatchingRowsChange: (applyToMatchingRows: boolean) => void;
-  onClearDraft: () => void;
-  rowsCount: number;
-  skippedCount: number;
-  sourceFileName: string | null;
-  suggestionCount: number;
-  unreviewedCount: number;
-}) {
+export function UploadPanel() {
+  const {
+    applyToMatchingRows,
+    displayedFileName,
+    draftUpdatedAt,
+    errorMessage,
+    fileDrop,
+    handleClearDraft,
+    hasReviewDraft,
+    isUploading,
+    rows,
+    setApplyToMatchingRows,
+    skippedCount,
+    sourceFileName,
+    suggestionCount,
+    unreviewedCount,
+  } = useImportAssistantState();
+  const rowsCount = rows.length;
+
   return (
     <div className='shrink-0 rounded-lg border border-line bg-panel p-3 shadow-shell'>
       <div className='grid gap-3 xl:grid-cols-[minmax(20rem,1fr)_minmax(26rem,1.25fr)_minmax(18rem,0.9fr)] xl:items-stretch'>
@@ -107,9 +93,7 @@ export function UploadPanel({
           <input
             checked={applyToMatchingRows}
             className='mt-1 size-4 accent-accent-lavender'
-            onChange={(event) =>
-              onApplyToMatchingRowsChange(event.target.checked)
-            }
+            onChange={(event) => setApplyToMatchingRows(event.target.checked)}
             type='checkbox'
           />
           <span>
@@ -137,7 +121,7 @@ export function UploadPanel({
           </div>
           <button
             className='inline-flex h-9 w-fit items-center justify-center gap-2 rounded-md border border-line bg-panel-raised px-3 text-xs font-semibold text-muted-strong transition hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-lavender'
-            onClick={onClearDraft}
+            onClick={handleClearDraft}
             type='button'
           >
             <Trash2 className='size-4' aria-hidden='true' />

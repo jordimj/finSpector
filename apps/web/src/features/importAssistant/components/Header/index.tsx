@@ -1,34 +1,25 @@
 import { Download } from 'lucide-react';
-import type {
-  ExportCsvMode,
-  ExportCsvPeriod,
-  ExportMonthOption,
-} from '../../types';
+import type { ExportCsvMode } from '../../types';
+import { useImportAssistantState } from '../../hooks/useImportAssistantState';
 import {
   exportCsvModeOptions,
   exportCsvPeriodFromSelectValue,
   exportCsvPeriodToSelectValue,
 } from '../../utils/csvExport';
 
-export function Header({
-  exportCsvMode,
-  exportCsvPeriod,
-  exportMonthOptions,
-  exportableRowCount,
-  hasRows,
-  onDownloadCsv,
-  onExportCsvModeChange,
-  onExportCsvPeriodChange,
-}: {
-  exportCsvMode: ExportCsvMode;
-  exportCsvPeriod: ExportCsvPeriod;
-  exportMonthOptions: ExportMonthOption[];
-  exportableRowCount: number;
-  hasRows: boolean;
-  onDownloadCsv: () => void;
-  onExportCsvModeChange: (mode: ExportCsvMode) => void;
-  onExportCsvPeriodChange: (period: ExportCsvPeriod) => void;
-}) {
+export function Header() {
+  const {
+    exportCsvMode,
+    exportCsvPeriod,
+    exportMonthOptions,
+    exportableRowCount,
+    handleDownloadCsv,
+    rows,
+    setExportCsvMode,
+    setExportCsvPeriod,
+  } = useImportAssistantState();
+  const hasRows = rows.length > 0;
+
   return (
     <div className='flex shrink-0 flex-col gap-3 lg:flex-row lg:items-end lg:justify-between'>
       <div>
@@ -46,7 +37,7 @@ export function Header({
             className='h-10 rounded-md border border-line bg-panel px-3 text-sm font-semibold text-muted-strong outline-none transition focus:border-accent-lavender focus:ring-2 focus:ring-accent-lavender/25'
             value={exportCsvMode}
             onChange={(event) =>
-              onExportCsvModeChange(event.target.value as ExportCsvMode)
+              setExportCsvMode(event.target.value as ExportCsvMode)
             }
           >
             {exportCsvModeOptions.map((option) => (
@@ -60,7 +51,7 @@ export function Header({
             className='h-10 rounded-md border border-line bg-panel px-3 text-sm font-semibold text-muted-strong outline-none transition focus:border-accent-lavender focus:ring-2 focus:ring-accent-lavender/25'
             value={exportCsvPeriodToSelectValue(exportCsvPeriod)}
             onChange={(event) =>
-              onExportCsvPeriodChange(
+              setExportCsvPeriod(
                 exportCsvPeriodFromSelectValue(event.target.value),
               )
             }
@@ -77,7 +68,7 @@ export function Header({
             type='button'
             className='inline-flex h-10 items-center justify-center gap-2 rounded-md border border-line bg-panel-raised px-4 text-sm font-semibold text-muted-strong transition hover:text-ink disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-lavender'
             disabled={exportableRowCount === 0}
-            onClick={onDownloadCsv}
+            onClick={handleDownloadCsv}
             title={
               exportableRowCount === 0
                 ? 'No rows match this CSV export selection'

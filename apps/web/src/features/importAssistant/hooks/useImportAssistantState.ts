@@ -1,4 +1,12 @@
-import { useEffect, useMemo, useState } from 'react';
+import {
+  createContext,
+  createElement,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
+import type { PropsWithChildren } from 'react';
 import { useCategories } from '../../../hooks/useCategories';
 import type { Category } from '../../../hooks/useCategories';
 import type { ImportReviewRow } from '../types';
@@ -11,7 +19,35 @@ import { useImportPreview } from './useImportPreview';
 import { useImportReviewDraft } from './useImportReviewDraft';
 import { useImportReviewRows } from './useImportReviewRows';
 
+type ImportAssistantState = ReturnType<typeof useImportAssistantStateValue>;
+
+const ImportAssistantStateContext = createContext<ImportAssistantState | null>(
+  null,
+);
+
+export function ImportAssistantStateProvider({ children }: PropsWithChildren) {
+  const state = useImportAssistantStateValue();
+
+  return createElement(
+    ImportAssistantStateContext.Provider,
+    { value: state },
+    children,
+  );
+}
+
 export function useImportAssistantState() {
+  const state = useContext(ImportAssistantStateContext);
+
+  if (state === null) {
+    throw new Error(
+      'useImportAssistantState must be used within ImportAssistantStateProvider',
+    );
+  }
+
+  return state;
+}
+
+function useImportAssistantStateValue() {
   const previewMutation = useImportPreview();
   const {
     clearImportReviewDraft,
@@ -27,9 +63,7 @@ export function useImportAssistantState() {
   const [pendingUploadFileName, setPendingUploadFileName] = useState<
     string | null
   >(null);
-  const [rows, setRows] = useState<ImportReviewRow[]>(
-    initialDraft?.rows ?? [],
-  );
+  const [rows, setRows] = useState<ImportReviewRow[]>(initialDraft?.rows ?? []);
   const [textPreview, setTextPreview] = useState('');
   const [applyToMatchingRows, setApplyToMatchingRows] = useState(true);
   const {
