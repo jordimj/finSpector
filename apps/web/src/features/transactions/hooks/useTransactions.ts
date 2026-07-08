@@ -1,9 +1,9 @@
 import { useInfiniteQuery } from '@tanstack/react-query';
 import type { Transaction, TransactionType } from '@finance/shared';
-import { fetchJson } from '../lib/api';
-import type { AccountFilter, ReportDateRange } from '../types';
-import { appendAccountParam } from '../utils';
-import { useAccountFilter } from './useAccountFilter';
+import { useAccountFilter } from '../../../hooks/useAccountFilter';
+import { fetchJson } from '../../../lib/api';
+import type { AccountFilter, ReportDateRange } from '../../../types';
+import { appendAccountParam } from '../../../utils';
 
 const transactionsPageSize = 50;
 
