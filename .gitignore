@@ -2,5 +2,7 @@ node_modules/
 dist/
 .env
 .DS_Store
-.agents
+
+.agents/skills/*
+!.agents/skills/finhunter-*/
 packages/importer/src/data/

@@ -81,6 +81,63 @@ corepack pnpm web:build
 corepack pnpm db:down
 ```
 
+## Always-on Local App
+
+FinHunter can run as a user-level macOS LaunchAgent while continuing to use
+the existing Docker Compose PostgreSQL database and named data volume. The
+installed service is available only from this Mac at:
+
+```text
+http://localhost:4400
+```
+
+Install it after Docker Desktop is configured to start at sign-in:
+
+```bash
+corepack pnpm app:local:install
+```
+
+The installer builds the web app, applies pending migrations, writes
+`~/Library/LaunchAgents/com.finhunter.local-app.plist`, and starts the service.
+The API remains a macOS process, so Google Calendar credentials continue to use
+the current user's Keychain. The Compose project name is pinned to
+`finance-app`, so moving or renaming the repository does not create a second
+PostgreSQL volume.
+
+The runnable copy is deployed under
+`~/Library/Application Support/FinHunter/runtime` because macOS does not grant
+background LaunchAgents access to source files under `~/Documents`. The runtime
+directory is user-only, excludes private importer data and development metadata,
+and gives any copied `.env` file user-only permissions.
+
+After pulling or making code changes, deploy them explicitly:
+
+```bash
+corepack pnpm app:local:deploy
+```
+
+Inspect or remove the service with:
+
+```bash
+corepack pnpm app:local:status
+corepack pnpm app:local:uninstall
+```
+
+Uninstalling removes the LaunchAgent and its deployed runtime. It does not stop
+PostgreSQL or delete `finance_postgres_data`. Service logs are stored with user-only
+permissions under `~/Library/Logs/FinHunter/service.log`. An oversized log
+rotates on service restart once it reaches 5 MiB.
+
+Both the API on port `4400` and PostgreSQL on port `5432` bind to `127.0.0.1`.
+The permanent service also rejects browser origins and request hosts other than
+`localhost` and `127.0.0.1`. It has no application authentication and must not
+be exposed through public tunnels or router port forwarding.
+
+The service is available while the laptop is powered on, awake, and the user
+is logged in. Browser-local data from the development origin
+`http://localhost:5173` is separate from data stored at the permanent URL.
+The PostgreSQL data is shared by both development and permanent instances.
+
 ## Local Wi-Fi Access
 
 To build the web app and serve it from the API on your local network:

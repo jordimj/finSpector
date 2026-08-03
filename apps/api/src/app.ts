@@ -2,6 +2,10 @@ import cors from '@fastify/cors';
 import helmet from '@fastify/helmet';
 import sensible from '@fastify/sensible';
 import Fastify, { type FastifyError, type FastifyInstance } from 'fastify';
+import {
+  getAccessControlOptions,
+  registerAccessControl,
+} from './access-control.js';
 import { registerCategoryRoutes } from './routes/categories.js';
 import { registerCockpitRoutes } from './routes/cockpit.js';
 import { registerImportRoutes } from './routes/imports.js';
@@ -12,15 +16,20 @@ import { registerTransactionRoutes } from './routes/transactions.js';
 import { registerWebAppRoutes } from './web-app.js';
 
 type BuildAppOptions = {
+  env?: NodeJS.ProcessEnv;
   webDistDir?: string;
 };
 
 export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
+  const env = options.env ?? process.env;
+  const accessControl = getAccessControlOptions(env);
   const app = Fastify({
     logger: {
-      level: process.env.LOG_LEVEL ?? 'info',
+      level: env.LOG_LEVEL ?? 'info',
     },
   });
+
+  registerAccessControl(app, accessControl);
 
   app.register(helmet, {
     contentSecurityPolicy: {
@@ -31,7 +40,7 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
     strictTransportSecurity: false,
   });
   app.register(cors, {
-    origin: process.env.CORS_ORIGIN?.split(',') ?? true,
+    origin: accessControl.allowedOrigins ?? true,
   });
   app.register(sensible);
 
@@ -51,7 +60,7 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
   app.register(registerTransactionRoutes, { prefix: '/api/transactions' });
   app.register(registerReportRoutes, { prefix: '/api/reports' });
 
-  const webDistDir = options.webDistDir ?? process.env.WEB_DIST_DIR;
+  const webDistDir = options.webDistDir ?? env.WEB_DIST_DIR;
 
   if (webDistDir) {
     registerWebAppRoutes(app, webDistDir);

@@ -7,6 +7,10 @@
   "scripts": {
     "api:dev": "corepack pnpm --filter @finance/api dev",
     "api:start": "corepack pnpm --filter @finance/api start",
+    "app:local:deploy": "zsh scripts/local-app.zsh deploy",
+    "app:local:install": "zsh scripts/local-app.zsh install",
+    "app:local:status": "zsh scripts/local-app.zsh status",
+    "app:local:uninstall": "zsh scripts/local-app.zsh uninstall",
     "app:lan": "corepack pnpm web:build && WEB_DIST_DIR=../../apps/web/dist HOST=0.0.0.0 corepack pnpm --filter @finance/api start",
     "web:dev": "corepack pnpm --filter @finance/web dev",
     "web:dev:lan": "corepack pnpm --filter @finance/web dev:lan",
