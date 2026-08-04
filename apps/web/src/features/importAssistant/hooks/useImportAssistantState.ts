@@ -9,8 +9,14 @@ import {
 import type { PropsWithChildren } from 'react';
 import { useCategories } from '../../../hooks/useCategories';
 import type { Category } from '../../../hooks/useCategories';
-import type { ImportReviewRow } from '../types';
-import { allExportCsvPeriod } from '../utils/csvExport';
+import type {
+  ApplyMatchingRowsScope,
+  ImportReviewRow,
+} from '../types';
+import {
+  allExportCsvPeriod,
+  isReviewRowFiltered,
+} from '../utils/csvExport';
 import { isSupportedImportFile } from '../utils/filePreview';
 import { toImportReviewRow } from '../utils/reviewRows';
 import { useImportCsvExport } from './useImportCsvExport';
@@ -65,7 +71,8 @@ function useImportAssistantStateValue() {
   >(null);
   const [rows, setRows] = useState<ImportReviewRow[]>(initialDraft?.rows ?? []);
   const [textPreview, setTextPreview] = useState('');
-  const [applyToMatchingRows, setApplyToMatchingRows] = useState(true);
+  const [applyMatchingRowsScope, setApplyMatchingRowsScope] =
+    useState<ApplyMatchingRowsScope>('filtered');
   const {
     exportCsvMode,
     exportCsvPeriod,
@@ -79,6 +86,15 @@ function useImportAssistantStateValue() {
     rows,
     sourceFileName,
   });
+  const visibleRows = useMemo(
+    () =>
+      rows.flatMap((row, index) =>
+        isReviewRowFiltered(row, exportCsvMode, exportCsvPeriod)
+          ? [{ index, row }]
+          : [],
+      ),
+    [exportCsvMode, exportCsvPeriod, rows],
+  );
   const {
     markReviewedRow,
     matchingRowCounts,
@@ -86,7 +102,9 @@ function useImportAssistantStateValue() {
     toggleSkippedRow,
     updateReviewRows,
   } = useImportReviewRows({
-    applyToMatchingRows,
+    applyMatchingRowsScope,
+    exportCsvMode,
+    exportCsvPeriod,
     rows,
     setRows,
   });
@@ -200,7 +218,7 @@ function useImportAssistantStateValue() {
   });
 
   return {
-    applyToMatchingRows,
+    applyMatchingRowsScope,
     categoriesByType,
     displayedFileName,
     draftUpdatedAt,
@@ -218,7 +236,7 @@ function useImportAssistantStateValue() {
     matchingRowCounts,
     resetReviewRows,
     rows,
-    setApplyToMatchingRows,
+    setApplyMatchingRowsScope,
     setExportCsvMode,
     setExportCsvPeriod,
     skippedCount,
@@ -228,6 +246,7 @@ function useImportAssistantStateValue() {
     toggleSkippedRow,
     unreviewedCount,
     updateReviewRows,
+    visibleRows,
   };
 }
 

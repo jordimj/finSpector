@@ -1,30 +1,46 @@
 import { useMemo } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
 import type {
+  ApplyMatchingRowsScope,
+  ExportCsvMode,
+  ExportCsvPeriod,
   ImportPreviewRow,
   ImportReviewRow,
 } from '../types';
+import { isReviewRowFiltered } from '../utils/csvExport';
 import { resetImportReviewRow } from '../utils/reviewRows';
 
 export function useImportReviewRows({
-  applyToMatchingRows,
+  applyMatchingRowsScope,
+  exportCsvMode,
+  exportCsvPeriod,
   rows,
   setRows,
 }: {
-  applyToMatchingRows: boolean;
+  applyMatchingRowsScope: ApplyMatchingRowsScope;
+  exportCsvMode: ExportCsvMode;
+  exportCsvPeriod: ExportCsvPeriod;
   rows: ImportReviewRow[];
   setRows: Dispatch<SetStateAction<ImportReviewRow[]>>;
 }) {
   const matchingRowCounts = useMemo(() => {
-    const counts = new Map<string, number>();
+    const totalCounts = new Map<string, number>();
+    const filteredCounts = new Map<string, number>();
 
     for (const row of rows) {
       const key = row.originalReviewKey;
-      counts.set(key, (counts.get(key) ?? 0) + 1);
+      totalCounts.set(key, (totalCounts.get(key) ?? 0) + 1);
+
+      if (isReviewRowFiltered(row, exportCsvMode, exportCsvPeriod)) {
+        filteredCounts.set(key, (filteredCounts.get(key) ?? 0) + 1);
+      }
     }
 
-    return rows.map((row) => counts.get(row.originalReviewKey) ?? 1);
-  }, [rows]);
+    return rows.map((row) => ({
+      filtered: filteredCounts.get(row.originalReviewKey) ?? 0,
+      total: totalCounts.get(row.originalReviewKey) ?? 1,
+    }));
+  }, [exportCsvMode, exportCsvPeriod, rows]);
 
   function updateReviewRows(index: number, changes: Partial<ImportPreviewRow>) {
     setRows((currentRows) => {
@@ -37,9 +53,15 @@ export function useImportReviewRows({
       const targetKey = targetRow.originalReviewKey;
 
       return currentRows.map((row, rowIndex) => {
-        const shouldUpdate = applyToMatchingRows
-          ? row.originalReviewKey === targetKey
-          : rowIndex === index;
+        const shouldUpdate = shouldApplyToRow({
+          applyMatchingRowsScope,
+          exportCsvMode,
+          exportCsvPeriod,
+          row,
+          rowIndex,
+          targetIndex: index,
+          targetKey,
+        });
 
         return shouldUpdate ? { ...row, ...changes, reviewed: true } : row;
       });
@@ -57,9 +79,15 @@ export function useImportReviewRows({
       const targetKey = targetRow.originalReviewKey;
 
       return currentRows.map((row, rowIndex) => {
-        const shouldReset = applyToMatchingRows
-          ? row.originalReviewKey === targetKey
-          : rowIndex === index;
+        const shouldReset = shouldApplyToRow({
+          applyMatchingRowsScope,
+          exportCsvMode,
+          exportCsvPeriod,
+          row,
+          rowIndex,
+          targetIndex: index,
+          targetKey,
+        });
 
         return shouldReset ? resetImportReviewRow(row) : row;
       });
@@ -89,4 +117,35 @@ export function useImportReviewRows({
     toggleSkippedRow,
     updateReviewRows,
   };
+}
+
+function shouldApplyToRow({
+  applyMatchingRowsScope,
+  exportCsvMode,
+  exportCsvPeriod,
+  row,
+  rowIndex,
+  targetIndex,
+  targetKey,
+}: {
+  applyMatchingRowsScope: ApplyMatchingRowsScope;
+  exportCsvMode: ExportCsvMode;
+  exportCsvPeriod: ExportCsvPeriod;
+  row: ImportReviewRow;
+  rowIndex: number;
+  targetIndex: number;
+  targetKey: string;
+}): boolean {
+  if (applyMatchingRowsScope === 'none') {
+    return rowIndex === targetIndex;
+  }
+
+  if (row.originalReviewKey !== targetKey) {
+    return false;
+  }
+
+  return (
+    applyMatchingRowsScope === 'all' ||
+    isReviewRowFiltered(row, exportCsvMode, exportCsvPeriod)
+  );
 }

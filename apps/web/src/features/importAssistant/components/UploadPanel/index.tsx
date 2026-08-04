@@ -1,5 +1,6 @@
 import { Loader2, Trash2, UploadCloud } from 'lucide-react';
 import type { ChangeEvent, DragEvent } from 'react';
+import type { ApplyMatchingRowsScope } from '../../types';
 import { cn } from '../../../../lib/utils';
 import { useImportAssistantState } from '../../hooks/useImportAssistantState';
 import { formatDraftSavedAt } from '../../utils/draftStorage';
@@ -15,7 +16,7 @@ export type ImportFileDropHandlers = {
 
 export function UploadPanel() {
   const {
-    applyToMatchingRows,
+    applyMatchingRowsScope,
     displayedFileName,
     draftUpdatedAt,
     errorMessage,
@@ -24,7 +25,7 @@ export function UploadPanel() {
     hasReviewDraft,
     isUploading,
     rows,
-    setApplyToMatchingRows,
+    setApplyMatchingRowsScope,
     skippedCount,
     sourceFileName,
     suggestionCount,
@@ -89,13 +90,7 @@ export function UploadPanel() {
           </dl>
         </div>
 
-        <label className='flex items-start gap-3 rounded-md border border-line bg-canvas/40 p-3'>
-          <input
-            checked={applyToMatchingRows}
-            className='mt-1 size-4 accent-accent-lavender'
-            onChange={(event) => setApplyToMatchingRows(event.target.checked)}
-            type='checkbox'
-          />
+        <label className='flex flex-col gap-2 rounded-md border border-line bg-canvas/40 p-3'>
           <span>
             <span className='block text-sm font-semibold text-ink'>
               Apply edits to matching rows
@@ -104,6 +99,19 @@ export function UploadPanel() {
               Matches use the original concept and description from the file.
             </span>
           </span>
+          <select
+            className='h-9 rounded-md border border-line bg-panel px-3 text-sm font-semibold text-muted-strong outline-none transition focus:border-accent-lavender focus:ring-2 focus:ring-accent-lavender/25'
+            value={applyMatchingRowsScope}
+            onChange={(event) =>
+              setApplyMatchingRowsScope(
+                event.target.value as ApplyMatchingRowsScope,
+              )
+            }
+          >
+            <option value='filtered'>Filtered rows</option>
+            <option value='all'>All rows</option>
+            <option value='none'>None</option>
+          </select>
         </label>
       </div>
 

@@ -5,7 +5,7 @@ import { EmptyPreviewState } from './EmptyPreviewState';
 
 export function PreviewTable() {
   const {
-    applyToMatchingRows,
+    applyMatchingRowsScope,
     categoriesByType,
     isUploading,
     markReviewedRow,
@@ -15,6 +15,7 @@ export function PreviewTable() {
     textPreview,
     toggleSkippedRow,
     updateReviewRows,
+    visibleRows,
   } = useImportAssistantState();
 
   return (
@@ -36,15 +37,21 @@ export function PreviewTable() {
           </div>
         ) : rows.length === 0 ? (
           <EmptyPreviewState textPreview={textPreview} />
+        ) : visibleRows.length === 0 ? (
+          <div className='flex min-h-80 items-center justify-center px-6 text-center text-sm font-medium text-muted'>
+            No rows match the selected type and month.
+          </div>
         ) : (
           <div className='divide-y divide-line'>
-            {rows.map((row, index) => (
+            {visibleRows.map(({ index, row }) => (
               <PreviewRow
                 key={`${row.date}-${row.amount}-${index}`}
                 categories={categoriesByType[row.type]}
-                applyToMatchingRows={applyToMatchingRows}
+                applyMatchingRowsScope={applyMatchingRowsScope}
                 index={index}
-                matchingCount={matchingRowCounts[index] ?? 1}
+                matchingCounts={
+                  matchingRowCounts[index] ?? { filtered: 1, total: 1 }
+                }
                 row={row}
                 onChange={updateReviewRows}
                 onMarkReviewed={markReviewedRow}

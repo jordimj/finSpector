@@ -43,6 +43,8 @@ export type ExportCsvRow = {
 
 export type ExportCsvMode = 'all' | ImportPreviewRow['type'];
 
+export type ApplyMatchingRowsScope = 'all' | 'filtered' | 'none';
+
 export type ExportCsvPeriod =
   | {
       type: 'all';

@@ -2,6 +2,7 @@ import type { Category } from '../../../../hooks/useCategories';
 import { cn } from '../../../../lib/utils';
 import { formatTransactionAmount } from '../../../../utils';
 import type {
+  ApplyMatchingRowsScope,
   ImportPreviewRow,
   ImportReviewRow,
 } from '../../types';
@@ -14,20 +15,20 @@ import { EditableSuggestionInput } from './EditableSuggestionInput';
 import { RowActions } from './RowActions';
 
 export function PreviewRow({
-  applyToMatchingRows,
+  applyMatchingRowsScope,
   categories,
   index,
-  matchingCount,
+  matchingCounts,
   row,
   onChange,
   onMarkReviewed,
   onReset,
   onToggleSkipped,
 }: {
-  applyToMatchingRows: boolean;
+  applyMatchingRowsScope: ApplyMatchingRowsScope;
   categories: Category[];
   index: number;
-  matchingCount: number;
+  matchingCounts: { filtered: number; total: number };
   row: ImportReviewRow;
   onChange: (index: number, changes: Partial<ImportPreviewRow>) => void;
   onMarkReviewed: (index: number) => void;
@@ -49,6 +50,10 @@ export function PreviewRow({
   );
   const hasReviewChanges = hasImportReviewChanges(row);
   const canReset = row.reviewed === true || hasReviewChanges;
+  const matchingBadge = getMatchingBadge(
+    applyMatchingRowsScope,
+    matchingCounts,
+  );
 
   function updateCategory(categoryName: string) {
     onChange(index, {
@@ -74,11 +79,9 @@ export function PreviewRow({
           <span className='line-clamp-1 text-xs font-semibold uppercase tracking-[0.1em] text-muted'>
             {row.concept ?? 'No concept'}
           </span>
-          {matchingCount > 1 ? (
+          {matchingBadge !== null ? (
             <span className='inline-flex h-5 shrink-0 items-center rounded-full bg-accent-lavender/10 px-2 text-[11px] font-bold text-accent-lavender'>
-              {applyToMatchingRows
-                ? `${matchingCount} linked`
-                : `${matchingCount} matches`}
+              {matchingBadge}
             </span>
           ) : null}
         </span>
@@ -179,4 +182,25 @@ export function PreviewRow({
       />
     </div>
   );
+}
+
+function getMatchingBadge(
+  scope: ApplyMatchingRowsScope,
+  counts: { filtered: number; total: number },
+): string | null {
+  if (counts.total <= 1) {
+    return null;
+  }
+
+  if (scope === 'none') {
+    return `${counts.total} matches`;
+  }
+
+  if (scope === 'all') {
+    return `${counts.total} linked (all)`;
+  }
+
+  return counts.filtered > 1
+    ? `${counts.filtered} visible linked`
+    : `${counts.total} matches`;
 }

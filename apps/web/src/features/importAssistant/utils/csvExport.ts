@@ -104,6 +104,16 @@ export function isExportedReviewRow(
 ): boolean {
   return (
     row.skipped !== true &&
+    isReviewRowFiltered(row, exportMode, exportPeriod)
+  );
+}
+
+export function isReviewRowFiltered(
+  row: ImportReviewRow,
+  exportMode: ExportCsvMode,
+  exportPeriod: ExportCsvPeriod,
+): boolean {
+  return (
     (exportMode === 'all' || row.type === exportMode) &&
     matchesExportPeriod(row, exportPeriod)
   );
