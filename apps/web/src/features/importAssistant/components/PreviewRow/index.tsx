@@ -97,7 +97,10 @@ export function PreviewRow({
           />
         </label>
         {row.description !== row.originalDescription ? (
-          <span className='line-clamp-1 text-xs font-medium text-muted'>
+          <span
+            className='line-clamp-1 cursor-help text-xs font-medium text-muted'
+            title={`Original: ${row.originalDescription}`}
+          >
             Original: {row.originalDescription}
           </span>
         ) : null}
